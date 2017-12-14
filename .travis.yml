@@ -10,10 +10,21 @@ matrix:
     - go: master 
 
 install:
-  - go get github.com/mattn/go-scan
-  - go get github.com/olekukonko/tablewriter 
-  - go get golang.org/x/crypto/ssh/terminal
-  - go get github.com/stretchr/testify/assert
+  - make deps
 
 script:
-  - go test -cover
+  - make
+
+before_deploy:
+  - make dist
+
+deploy:
+  provider: releases
+  api_key: "GITHUB OAUTH TOKEN"
+  file_glob: true
+  file: 'dist/*.{tar.gz,zip}'
+  skip_cleanup: true
+  on:
+    branch: release
+    tags: true
+    go: 1.9

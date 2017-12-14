@@ -32,7 +32,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-var version = "0.9.0-dev"
+var version string
 
 var availableDeleteCommand = false
 

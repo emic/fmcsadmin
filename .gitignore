@@ -2,3 +2,4 @@
 .glide/
 .DS_Store
 bin
+dist

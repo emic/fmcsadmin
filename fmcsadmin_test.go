@@ -71,7 +71,7 @@ func TestRunWithVersionOption1(t *testing.T) {
 	args := strings.Split("fmcsadmin -v", " ")
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
-	expected := "fmcsadmin 0.9.0"
+	expected := "fmcsadmin"
 	assert.Contains(t, outStream.String(), expected)
 }
 
@@ -82,7 +82,7 @@ func TestRunWithVersionOption2(t *testing.T) {
 	args := strings.Split("fmcsadmin --version", " ")
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
-	expected := "fmcsadmin 0.9.0"
+	expected := "fmcsadmin"
 	assert.Contains(t, outStream.String(), expected)
 }
 

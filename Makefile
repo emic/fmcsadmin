@@ -1,12 +1,17 @@
+NAME=fmcsadmin
+VERSION=0.9.0-dev
+
 GOCMD=go
 GOBUILD=$(GOCMD) build
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
-BINARY_NAME=fmcsadmin
-BINARY_DIR=bin
-BINARY_LINUX_DIR=$(BINARY_DIR)/linux
-BINARY_MACOS_DIR=$(BINARY_DIR)/macos
-BINARY_WINDOWS_DIR=$(BINARY_DIR)/windows
+DIST_DIR=dist
+LINUX_DIR=linux
+MACOS_DIR=macos
+WINDOWS_DIR=windows
+DIST_LINUX_DIR=$(NAME)-$(VERSION)-$(LINUX_DIR)
+DIST_MACOS_DIR=$(NAME)-$(VERSION)-$(MACOS_DIR)
+DIST_WINDOWS_DIR=$(NAME)-$(VERSION)-$(WINDOWS_DIR)
 
 all: test build
 
@@ -14,24 +19,51 @@ deps:
 	$(GOGET) github.com/mattn/go-scan
 	$(GOGET) github.com/olekukonko/tablewriter
 	$(GOGET) golang.org/x/crypto/ssh/terminal
+	$(GOGET) github.com/stretchr/testify/assert
 
 test: deps
 	$(GOTEST) --cover
 
 .PHONY: clean
 clean:
-	@rm -rf $(BINARY_DIR)
+	@rm -rf $(DIST_DIR)
 
 build: build-linux build-macos build-windows
 
 build-linux:
-	mkdir -p $(BINARY_LINUX_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -o $(BINARY_LINUX_DIR)/$(BINARY_NAME)
+	mkdir -p $(DIST_DIR)/$(LINUX_DIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -ldflags "-X main.version=$(VERSION)" -o $(DIST_DIR)/$(LINUX_DIR)/$(NAME)
 
 build-macos:
-	mkdir -p $(BINARY_MACOS_DIR)
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -o $(BINARY_MACOS_DIR)/$(BINARY_NAME)
+	mkdir -p $(DIST_DIR)/$(MACOS_DIR)
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -ldflags "-X main.version=$(VERSION)" -o $(DIST_DIR)/$(MACOS_DIR)/$(NAME)
 
 build-windows:
-	mkdir -p $(BINARY_WINDOWS_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -o $(BINARY_WINDOWS_DIR)/$(BINARY_NAME).exe
+	mkdir -p $(DIST_DIR)/$(WINDOWS_DIR)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -ldflags "-X main.version=$(VERSION)" -o $(DIST_DIR)/$(WINDOWS_DIR)/$(NAME).exe
+
+.PHONY: dist
+dist: deps build
+	cd $(DIST_DIR) && \
+	mv $(LINUX_DIR) $(DIST_LINUX_DIR) && \
+	cp ../LICENSE.txt $(DIST_LINUX_DIR) && \
+	cp ../README.md $(DIST_LINUX_DIR)/ && \
+	cp ../release-notes.txt $(DIST_LINUX_DIR)/ && \
+	tar -zcf $(DIST_LINUX_DIR).tar.gz $(DIST_LINUX_DIR) && \
+	cd ..
+
+	cd $(DIST_DIR) && \
+	mv $(MACOS_DIR) $(DIST_MACOS_DIR) && \
+	cp ../LICENSE.txt $(DIST_MACOS_DIR) && \
+	cp ../README.md $(DIST_MACOS_DIR)/ && \
+	cp ../release-notes.txt $(DIST_MACOS_DIR)/ && \
+	zip -r $(DIST_MACOS_DIR).zip $(DIST_MACOS_DIR) && \
+	cd ..
+
+	cd $(DIST_DIR) && \
+	mv $(WINDOWS_DIR) $(DIST_WINDOWS_DIR) && \
+	cp ../LICENSE.txt $(DIST_WINDOWS_DIR) && \
+	cp ../README.md $(DIST_WINDOWS_DIR)/ && \
+	cp ../release-notes.txt $(DIST_WINDOWS_DIR)/ && \
+	zip -r $(DIST_WINDOWS_DIR).zip $(DIST_WINDOWS_DIR) && \
+	cd ..
