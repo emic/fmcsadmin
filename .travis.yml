@@ -17,10 +17,13 @@ script:
 
 before_deploy:
   - make dist
+  - git config --local user.name "Atsushi Matsuo"
+  - git config --local user.email "famlog@gmail.com"
 
 deploy:
   provider: releases
-  api_key: "GITHUB OAUTH TOKEN"
+  api_key:
+    secure: "RE7FhpoYw9BktBbdujs6Z5YjBukT47UmjrUL8jAemkjtY4IAqT/CZSzvLPwvfCABybGLqwWqg5Z3zWtfpoRwc8w0T6Bwiqcs1m8TDNvbsdxMMCaJEqoXR6F6p+iytm0w88VEl35kY0MoSch31lb+hsmBgWZ2xhpH9aD8KGYfyom4cz0CeA7oSzDqBLHcKj7RGBXirfFD3YffOl0OP5IDQIPvp7gfZha2wzjKX2c3tlnAjOKsO3RlEpLSPd0eRhSRaXDIbsJiZFvqWyTwOql9giO8v2RBM0Ry8obyzbLq+XxMdFQTPs8ut0ly+829n2X5tLLQywvoGLPbMhg2ejyb34AezFPEl995bZD6uGtpi3KGquSnpUX16+lL76znFO+pARdv6RAmO37bdY2uS3SxVVhoYhjPWU9L21jzHUut5vBvp9WZMGEAnUk7G6XZkdSc+QUa0GkORFiVVGjsZ7SmHfuLKNN5BWjYVNB/gud0glf5wDfp2cLrnlTyxEpgv6oQPDk8JYgnLUQKnOf6cv23eh/8Ap92oUglNNbxieHkSlBDt9JT99eTAS1bjza3ad38O62+lK4pdXEKIu/ptvKaI4G2F/kyhYxSXmuRs8JM+2hUac9aN7URxnPvbB3Po0Kr/mP1RRskOeJu/Q3P6OMVs7a4Qnbv/ncybP5+SYrWICg="
   file_glob: true
   file: 'dist/*.{tar.gz,zip}'
   skip_cleanup: true
