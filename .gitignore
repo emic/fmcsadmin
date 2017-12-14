@@ -1,0 +1,4 @@
+*.out
+.glide/
+.DS_Store
+bin
