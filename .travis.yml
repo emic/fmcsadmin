@@ -1,0 +1,18 @@
+language: go
+sudo: false
+go:
+  - 1.8
+  - 1.9
+  - master 
+
+matrix:
+  allow_failures:
+    - go: master 
+
+install:
+  - go get github.com/mattn/go-scan
+  - go get github.com/olekukonko/tablewriter 
+  - go get golang.org/x/crypto/ssh/terminal
+
+script:
+  - go test -cover
