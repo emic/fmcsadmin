@@ -1,4 +1,4 @@
-fmcsadmin
+fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=master)](https://travis-ci.org/emic/fmcsadmin)
 =========
 fmcsadmin is the command line tool to administer the Database Server component of FileMaker Cloud via FileMaker Admin API. FileMaker is a trademark of FileMaker, Inc., registered in the U.S. and other countries.
 
