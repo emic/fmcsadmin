@@ -13,6 +13,7 @@ install:
   - go get github.com/mattn/go-scan
   - go get github.com/olekukonko/tablewriter 
   - go get golang.org/x/crypto/ssh/terminal
+  - go get github.com/stretchr/testify/assert
 
 script:
   - go test -cover
