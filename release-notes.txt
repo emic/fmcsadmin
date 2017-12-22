@@ -2,6 +2,6 @@ fmcsadmin
 (c) 2017 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
-Version: 0.9.0 (in development)
-Date: XXXX XX, XXXX
+Version: 0.9.0 (beta)
+Date: December 22, 2017 
 - Initial release supporting FileMaker Admin API (Trial). Released as a beta version under the Apache License, Version 2.0.
