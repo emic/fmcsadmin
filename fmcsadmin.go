@@ -1,6 +1,6 @@
 /**
  * fmcsadmin
- * (c) 2017 Emic Corporation <https://www.emic.co.jp/>
+ * (c) 2017-2018 Emic Corporation <https://www.emic.co.jp/>
  * This software is distributed under the Apache License, Version 2.0,
  * see LICENSE.txt and NOTICE.txt for more information.
  *
@@ -873,7 +873,7 @@ func login(endpoint string, user string, pass string, p params) (string, int, er
 func logout(endpoint string, token string) {
 	u, _ := url.Parse(endpoint)
 	u.Path = path.Join(getAPIBasePath(), "user", "logout")
-	sendRequest("PUT", u.String(), token, params{})
+	sendRequest("POST", u.String(), token, params{})
 }
 
 func listClients(url string, token string, id int) int {
