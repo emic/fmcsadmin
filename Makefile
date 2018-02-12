@@ -46,24 +46,27 @@ build-windows:
 dist: deps build
 	cd $(DIST_DIR) && \
 	mv $(LINUX_DIR) $(DIST_LINUX_DIR) && \
-	cp ../LICENSE.txt $(DIST_LINUX_DIR) && \
-	cp ../README.md $(DIST_LINUX_DIR)/ && \
-	cp ../release-notes.txt $(DIST_LINUX_DIR)/ && \
+	cp -p ../LICENSE.txt $(DIST_LINUX_DIR)/ && \
+	cp -p ../NOTICE.txt $(DIST_LINUX_DIR)/ && \
+	cp -p ../README.md $(DIST_LINUX_DIR)/ && \
+	cp -p ../release-notes.txt $(DIST_LINUX_DIR)/ && \
 	tar -zcf $(DIST_LINUX_DIR).tar.gz $(DIST_LINUX_DIR) && \
 	cd ..
 
 	cd $(DIST_DIR) && \
 	mv $(MACOS_DIR) $(DIST_MACOS_DIR) && \
-	cp ../LICENSE.txt $(DIST_MACOS_DIR) && \
-	cp ../README.md $(DIST_MACOS_DIR)/ && \
-	cp ../release-notes.txt $(DIST_MACOS_DIR)/ && \
+	cp -p ../LICENSE.txt $(DIST_MACOS_DIR)/ && \
+	cp -p ../NOTICE.txt $(DIST_MACOS_DIR)/ && \
+	cp -p ../README.md $(DIST_MACOS_DIR)/ && \
+	cp -p ../release-notes.txt $(DIST_MACOS_DIR)/ && \
 	zip -r $(DIST_MACOS_DIR).zip $(DIST_MACOS_DIR) && \
 	cd ..
 
 	cd $(DIST_DIR) && \
 	mv $(WINDOWS_DIR) $(DIST_WINDOWS_DIR) && \
-	cp ../LICENSE.txt $(DIST_WINDOWS_DIR) && \
-	cp ../README.md $(DIST_WINDOWS_DIR)/ && \
-	cp ../release-notes.txt $(DIST_WINDOWS_DIR)/ && \
+	cp -p ../LICENSE.txt $(DIST_WINDOWS_DIR)/ && \
+	cp -p ../NOTICE.txt $(DIST_WINDOWS_DIR)/ && \
+	cp -p ../README.md $(DIST_WINDOWS_DIR)/ && \
+	cp -p ../release-notes.txt $(DIST_WINDOWS_DIR)/ && \
 	zip -r $(DIST_WINDOWS_DIR).zip $(DIST_WINDOWS_DIR) && \
 	cd ..

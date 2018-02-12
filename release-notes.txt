@@ -4,6 +4,7 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 
 Version: 0.9.1 (in development)
 - Add error messages for the FileMaker error code 10006 and 10908.
+- Add NOTICE.txt to the distribution file.
 - [BUG FIX] Fix logging out process.
 
 Version: 0.9.0 (beta)
