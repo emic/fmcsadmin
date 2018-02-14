@@ -1,6 +1,6 @@
 /**
  * fmcsadmin
- * (c) 2017 Emic Corporation <https://www.emic.co.jp/>
+ * (c) 2017-2018 Emic Corporation <https://www.emic.co.jp/>
  * This software is distributed under the Apache License, Version 2.0,
  * see LICENSE.txt and NOTICE.txt for more information.
  *
@@ -873,7 +873,7 @@ func login(endpoint string, user string, pass string, p params) (string, int, er
 func logout(endpoint string, token string) {
 	u, _ := url.Parse(endpoint)
 	u.Path = path.Join(getAPIBasePath(), "user", "logout")
-	sendRequest("PUT", u.String(), token, params{})
+	sendRequest("POST", u.String(), token, params{})
 }
 
 func listClients(url string, token string, id int) int {
@@ -1451,6 +1451,9 @@ func getErrorDescription(errorCode int) string {
 		description = "Parameter missing"
 	case 960:
 		description = "Parameter is invalid"
+	case 10006:
+		// When a script runs and a service is already executing (for example, during a long loop), the FileMaker error 10006, "kServiceAlreadyRunning," is returned.
+		description = "Service is already running"
 	case 10600:
 		description = "Schedule at specified index no longer exists"
 	case 10601:
@@ -1467,6 +1470,9 @@ func getErrorDescription(errorCode int) string {
 		description = "No applicable files for this operation"
 	case 10906:
 		description = "Script is missing"
+	case 10908:
+		// When a script schedule stops executing, the FileMaker error code 10908, "System script aborted," is returned.
+		description = "System script aborted"
 	case 11005:
 		description = "Disconnect client invalid ID"
 	case 25004:
