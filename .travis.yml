@@ -1,16 +1,13 @@
 language: go
 sudo: false
 go:
-  - 1.8
-  - 1.9
+  - "1.9"
+  - "1.10"
   - master 
 
 matrix:
   allow_failures:
     - go: master 
-
-install:
-  - make deps
 
 script:
   - make
@@ -28,6 +25,5 @@ deploy:
   file: 'dist/*.{tar.gz,zip}'
   skip_cleanup: true
   on:
-    branch: release
     tags: true
-    go: 1.9
+    go: "1.10"
