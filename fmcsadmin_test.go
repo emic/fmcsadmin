@@ -54,11 +54,19 @@ func TestRun(t *testing.T) {
 
 	args = strings.Split("fmcsadmin restart", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 248, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 
 	args = strings.Split("fmcsadmin restart unknown -y", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 23, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 
 	args = strings.Split("fmcsadmin run unknown", " ")
 	status = cli.Run(args)
@@ -82,11 +90,19 @@ func TestRun(t *testing.T) {
 
 	args = strings.Split("fmcsadmin start", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 248, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 
 	args = strings.Split("fmcsadmin start unknown", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 23, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 
 	args = strings.Split("fmcsadmin status unknown", " ")
 	status = cli.Run(args)
@@ -94,11 +110,19 @@ func TestRun(t *testing.T) {
 
 	args = strings.Split("fmcsadmin stop", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 248, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 
 	args = strings.Split("fmcsadmin stop unknown -y", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 23, status)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 }
 
 func TestRunInvalidCommand(t *testing.T) {
