@@ -80,6 +80,11 @@ type xmlConfigInfo struct {
 	Enabled bool `json:"enabled"`
 }
 
+type disconnectMessageInfo struct {
+	Message   string `json:"message"`
+	Gracetime int    `json:"gracetime"`
+}
+
 type messageInfo struct {
 	Message string `json:"message"`
 }
@@ -2303,6 +2308,12 @@ func sendRequest(method string, url string, token string, p params) (int, bool, 
 	if len(p.key) > 0 {
 		d := dbInfo{
 			p.key,
+		}
+		jsonStr, _ = json.Marshal(d)
+	} else if (params{}) != p && reflect.ValueOf(p.gracetime).IsValid() == true && p.gracetime >= 0 {
+		d := disconnectMessageInfo{
+			p.message,
+			p.gracetime,
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.message).IsValid() == true && len(p.message) > 0 {

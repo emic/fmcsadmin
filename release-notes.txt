@@ -18,6 +18,7 @@ Version: 0.9.2 (in development)
 - Show an error message of the error code 11005 when specified client ID doesn't exist and using "DISCONNECT" command.
 - Adjust showing value of "CONNECT TIME" and "FILE NAME" when listing clients with "STATUS" command.
 - Built with Go 1.10.
+- [BUG FIX] Fix "DISCONNECT" command.
 - [BUG FIX] Show an error message when specified schedule ID doesn't exist and using "ENABLE", "DISABLE" and "RUN" commands.
 - [BUG FIX] Fix "SEND" command to send a text message to the clients connected to the specified databases.
 - [BUG FIX] Fix showing values of "LAST COMPLETED" and "STATUS" correctly in some cases when listing schedules with "LIST" command.
