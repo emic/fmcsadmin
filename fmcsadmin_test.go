@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,13 +24,105 @@ func TestRun(t *testing.T) {
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
 
+	args = strings.Split("fmcsadmin close -b", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 249, status)
+
+	args = strings.Split("fmcsadmin close --unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 249, status)
+
+	args = strings.Split("fmcsadmin disconnect unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
 	args = strings.Split("fmcsadmin list", " ")
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
 
-	args = strings.Split("fmcsadmin list unknwon", " ")
+	args = strings.Split("fmcsadmin list unknown", " ")
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin get", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin get unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin restart", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
+
+	args = strings.Split("fmcsadmin restart unknown -y", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
+
+	args = strings.Split("fmcsadmin run unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin set", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin set cwpconfig", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 10001, status)
+
+	args = strings.Split("fmcsadmin set serverconfig", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 10001, status)
+
+	args = strings.Split("fmcsadmin set unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin start", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
+
+	args = strings.Split("fmcsadmin start unknown", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
+
+	args = strings.Split("fmcsadmin status unknown", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
+	args = strings.Split("fmcsadmin stop", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 248, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
+
+	args = strings.Split("fmcsadmin stop unknown -y", " ")
+	status = cli.Run(args)
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, 23, status)
+	} else {
+		assert.Equal(t, 3, status)
+	}
 }
 
 func TestRunInvalidCommand(t *testing.T) {
@@ -314,6 +408,17 @@ func TestRunShowPauseCommandHelp(t *testing.T) {
 	assert.Contains(t, outStream.String(), expected)
 }
 
+func TestRunShowRestartCommandHelp(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin help restart", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "Usage: fmcsadmin RESTART [TYPE]"
+	assert.Contains(t, outStream.String(), expected)
+}
+
 func TestRunShowResumeCommandHelp(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
@@ -347,6 +452,17 @@ func TestRunShowSendCommandHelp(t *testing.T) {
 	assert.Contains(t, outStream.String(), expected)
 }
 
+func TestRunShowStartCommandHelp(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin help start", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "Usage: fmcsadmin START [TYPE]"
+	assert.Contains(t, outStream.String(), expected)
+}
+
 func TestRunShowStatusCommandHelp(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
@@ -355,6 +471,17 @@ func TestRunShowStatusCommandHelp(t *testing.T) {
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
 	expected := "Usage: fmcsadmin STATUS [TYPE] [CLIENT_NUMBER] [FILE...]"
+	assert.Contains(t, outStream.String(), expected)
+}
+
+func TestRunShowStopCommandHelp(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin help stop", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "Usage: fmcsadmin STOP [TYPE] [options]"
 	assert.Contains(t, outStream.String(), expected)
 }
 
@@ -1075,12 +1202,18 @@ func TestOutputInvalidCommandErrorMessage(t *testing.T) {
 }
 
 func TestGetHostName(t *testing.T) {
-	assert.Equal(t, "http://127.0.0.1:8080", getHostName(""))
+	if runtime.GOOS == "linux" {
+		assert.Equal(t, "http://127.0.0.1:8080", getHostName(""))
+	} else if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
+	}
 	assert.Equal(t, "https://example.jp", getHostName("example.jp"))
 }
 
 func TestGetAPIBasePath(t *testing.T) {
-	assert.Equal(t, "/admin/api/v1", getAPIBasePath())
+	assert.Equal(t, "/admin/api/v1", getAPIBasePath("http://127.0.0.1:8080"))
+	assert.Equal(t, "/admin/api/v1", getAPIBasePath("https://example.jp"))
+	assert.Equal(t, "/fmi/admin/api/v1", getAPIBasePath("http://127.0.0.1:16001"))
 }
 
 func TestComparePath(t *testing.T) {
@@ -1093,10 +1226,24 @@ func TestComparePath(t *testing.T) {
 
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/"))
 
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/"))
+
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/"))
+
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
@@ -1107,16 +1254,30 @@ func TestComparePath(t *testing.T) {
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+
+	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+
+	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 }
 
 func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "", getErrorDescription(0))
+	assert.Equal(t, "Internal error", getErrorDescription(-1))
+	assert.Equal(t, "Unavailable command", getErrorDescription(3))
+	assert.Equal(t, "Command is unknown", getErrorDescription(4))
 	assert.Equal(t, "Empty result", getErrorDescription(8))
-	assert.Equal(t, "Insufficient privileges", getErrorDescription(9))
+	assert.Equal(t, "Access denied", getErrorDescription(9))
 	assert.Equal(t, "Invalid user account and/or password; please try again", getErrorDescription(212))
 	assert.Equal(t, "Unable to open the file", getErrorDescription(802))
 	assert.Equal(t, "Parameter missing", getErrorDescription(958))
 	assert.Equal(t, "Parameter is invalid", getErrorDescription(960))
+	assert.Equal(t, "Service already running", getErrorDescription(10006))
 	assert.Equal(t, "Schedule at specified index no longer exists", getErrorDescription(10600))
 	assert.Equal(t, "Schedule is misconfigured; invalid taskType or run status", getErrorDescription(10601))
 	assert.Equal(t, "Schedule can't be created or duplicated", getErrorDescription(10603))
@@ -1125,7 +1286,24 @@ func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "Schedule name is already used", getErrorDescription(10611))
 	assert.Equal(t, "No applicable files for this operation", getErrorDescription(10904))
 	assert.Equal(t, "Script is missing", getErrorDescription(10906))
-	assert.Equal(t, "Disconnect client invalid ID", getErrorDescription(11005))
+	assert.Equal(t, "System script aborted", getErrorDescription(10908))
+	assert.Equal(t, "Invalid command", getErrorDescription(11000))
+	assert.Equal(t, "Unable to create command", getErrorDescription(11002))
+	assert.Equal(t, "Disconnect Client invalid ID", getErrorDescription(11005))
 	assert.Equal(t, "Parameters are invalid", getErrorDescription(25004))
 	assert.Equal(t, "Invalid session error", getErrorDescription(25006))
+}
+
+func TestGetDateTimeStringOfCurrentTimeZone(t *testing.T) {
+	const location = "Asia/Tokyo"
+	loc, err := time.LoadLocation(location)
+	if err != nil {
+		loc = time.FixedZone(location, 9*60*60)
+	}
+	time.Local = loc
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone(""))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00"))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00 GMT"))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05"))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT"))
 }
