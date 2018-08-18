@@ -2438,6 +2438,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Access denied"
 	case 212:
 		description = "Invalid user account and/or password; please try again"
+	case 214:
+		description = "Too many login attempts, account locked out"
 	case 802:
 		description = "Unable to open the file"
 	case 958:
