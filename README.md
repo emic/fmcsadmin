@@ -29,7 +29,6 @@ Features
 
 Supported Servers
 -----
-- FileMaker Cloud 1.16 (FileMaker Admin API (Trial) in FileMaker Cloud 1.16 will expire on September 27, 2018)
 - FileMaker Cloud 1.17 (FileMaker Admin API (Trial) in FileMaker Cloud 1.17 will expire on September 27, 2019)
 - FileMaker Server 17 (FileMaker Admin API (Trial) in FileMaker Server 17 will expire on September 27, 2019)
 
