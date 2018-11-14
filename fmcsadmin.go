@@ -94,6 +94,7 @@ type runningInfo struct {
 }
 
 type params struct {
+	command              string
 	key                  string
 	message              string
 	gracetime            int
@@ -237,7 +238,7 @@ func (c *cli) Run(args []string) int {
 						connectedClients := getClients(u.String(), token, args, "")
 						for i := 0; i < len(idList); i++ {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "close")
-							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{message: message})
+							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{command: "close", message: message})
 							if exitStatus == 0 && err == nil && len(message) == 0 && len(connectedClients) == 0 {
 								// Don't output this message
 								//   1. when using "-m (--message)" option
@@ -2245,7 +2246,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
 			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "close")
-			exitStatus, _, err = sendRequest("PUT", u.String(), token, params{message: message})
+			exitStatus, _, err = sendRequest("PUT", u.String(), token, params{command: "close", message: message})
 		}
 	}
 
@@ -2310,15 +2311,15 @@ func sendRequest(method string, url string, token string, p params) (int, bool, 
 			p.key,
 		}
 		jsonStr, _ = json.Marshal(d)
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "close" {
+		d := messageInfo{
+			p.message,
+		}
+		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.gracetime).IsValid() == true && p.gracetime >= 0 {
 		d := disconnectMessageInfo{
 			p.message,
 			p.gracetime,
-		}
-		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.message).IsValid() == true && len(p.message) > 0 {
-		d := messageInfo{
-			p.message,
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.characterencoding).IsValid() == true && len(p.characterencoding) > 0 {
