@@ -239,10 +239,8 @@ func (c *cli) Run(args []string) int {
 						for i := 0; i < len(idList); i++ {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "close")
 							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{command: "close", message: message})
-							if exitStatus == 0 && err == nil && len(message) == 0 && len(connectedClients) == 0 {
-								// Don't output this message
-								//   1. when using "-m (--message)" option
-								//   2. when the clients connected to the specified databases are existing
+							if exitStatus == 0 && err == nil && len(connectedClients) == 0 {
+								// Don't output this message when the clients connected to the specified databases are existing
 								fmt.Fprintln(c.outStream, "File Closed: "+nameList[i])
 							}
 						}
