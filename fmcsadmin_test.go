@@ -2,6 +2,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"strings"
 	"testing"
@@ -483,6 +488,46 @@ func TestRunShowStopCommandHelp(t *testing.T) {
 	assert.Equal(t, 0, status)
 	expected := "Usage: fmcsadmin STOP [TYPE] [options]"
 	assert.Contains(t, outStream.String(), expected)
+}
+
+func TestRunCloseCommand1(t *testing.T) {
+	t.Parallel()
+
+	running := true
+	url := "http://127.0.0.1:16001/fmi/admin/api/v1/user/login"
+	_, err := http.Get(url)
+	if err != nil {
+		running = false
+	}
+
+	if running == false {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "{\"result\": 0, \"token\": \"ACCESSTOKEN\", \"totalDBCount\": 1, \"files\": {\"files\": [{\"status\": \"NORMAL\", \"filename\": \"TestDB.fmp12\"}]}}")
+			if r.URL.Path == "/fmi/admin/api/v1/databases/0/close" {
+				request, _ := ioutil.ReadAll(r.Body)
+				assert.Equal(t, "{\"message\":\"MESSAGE\"}", string([]byte(request)))
+			}
+		})
+
+		l, _ := net.Listen("tcp", "127.0.0.1:16001")
+		ts := httptest.Server{
+			Listener: l,
+			Config:   &http.Server{Handler: handler},
+		}
+		ts.Start()
+		defer ts.Close()
+	}
+
+	/*
+	[WIP]
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+	args := strings.Split("fmcsadmin close TestDB -y -u USERNAME -p PASSWORD -m MESSAGE", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "TestDB.fmp12"
+	assert.Contains(t, outStream.String(), expected)
+	*/
 }
 
 func TestRunStatusCommand1(t *testing.T) {
