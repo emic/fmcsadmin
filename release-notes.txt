@@ -5,6 +5,8 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 Version: 0.9.3 (in development)
 - Add an error message for the FileMaker error code 214.
 - Built with Go 1.11.
+- [BUG FIX] Fix "-m" and "--message" option of "CLOSE" command. The affected version is 0.9.2 only.
+- [BUG FIX] Output "File Closed:" when using "-m" or "--message" option of "CLOSE" command and there is no client connected to the specified databases.
 
 Version: 0.9.2 (beta)
 Date: July 6, 2018
