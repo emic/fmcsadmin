@@ -68,7 +68,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 248, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 248, status)
 	}
 
 	args = strings.Split("fmcsadmin restart unknown -y", " ")
@@ -76,7 +76,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 23, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 23, status)
 	}
 
 	args = strings.Split("fmcsadmin run unknown", " ")
@@ -108,7 +108,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 248, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 248, status)
 	}
 
 	args = strings.Split("fmcsadmin start unknown", " ")
@@ -116,7 +116,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 23, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 23, status)
 	}
 
 	args = strings.Split("fmcsadmin status unknown", " ")
@@ -128,7 +128,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 248, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 248, status)
 	}
 
 	args = strings.Split("fmcsadmin stop unknown -y", " ")
@@ -136,7 +136,7 @@ func TestRun(t *testing.T) {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, 23, status)
 	} else {
-		assert.Equal(t, 3, status)
+		assert.Equal(t, 23, status)
 	}
 }
 
@@ -522,7 +522,7 @@ func TestRunCloseCommand1(t *testing.T) {
 		address := "127.0.0.1:16001"
 		ci := os.Getenv("TRAVIS")
 		if ci == "true" {
-			address = "127.0.0.1:8080"
+			address = "127.0.0.1:16001"
 		}
 		l, err := net.Listen("tcp", address)
 		if err != nil {
@@ -1309,7 +1309,7 @@ func TestOutputInvalidCommandErrorMessage(t *testing.T) {
 
 func TestGetHostName(t *testing.T) {
 	if runtime.GOOS == "linux" {
-		assert.Equal(t, "http://127.0.0.1:8080", getHostName(""))
+		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
 	} else if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
 	}
@@ -1360,10 +1360,12 @@ func TestComparePath(t *testing.T) {
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 
-	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
-	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	if runtime.GOOS == "darwin" {
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+	}
 
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
