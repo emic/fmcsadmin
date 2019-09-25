@@ -10,6 +10,7 @@ Version: 1.0.0 (in development)
 - Add "GET BACKUPTIME" command to retrieve the start time of a specified backup schedule or the start times of all backup schedules for FileMaker Server (Handling schedule ID 1 is not supported).
 - Add "GET SERVERPREFS" command for FileMaker Server.
 - Add "SET SERVERPREFS" command for FileMaker Server.
+- Add 32-bit version for Windows.
 - [BUG FIX] Modify outputting enabled extended privileges of closed files when using "-s" option of "LIST FILES" command.
 
 Version: 0.9.3 (beta)
