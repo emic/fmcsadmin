@@ -2,6 +2,15 @@ fmcsadmin
 (c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
+Version: 1.0.0 (in development)
+- Support and require FileMaker Admin API v2 of FileMaker Server 18 and FileMaker Cloud for AWS 1.18.
+- Enable "--fqdn" option for FileMaker Server.
+- Add "-f" and "--force" option for forcing database to close or database server to stop, immediately disconnecting clients.
+- Add "GET BACKUPTIME" command to retrieve the start time of a specified backup schedule or the start times of all backup schedules for FileMaker Server (Handling schedule ID 1 is not supported).
+- Add "GET SERVERPREFS" command for FileMaker Server.
+- Add "SET SERVERPREFS" command for FileMaker Server.
+- [BUG FIX] Modify outputting enabled extended privileges of closed files when using "-s" option of "LIST FILES" command.
+
 Version: 0.9.3 (beta)
 Date: January 28, 2019
 - Add an error message for the FileMaker error code 214.

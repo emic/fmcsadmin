@@ -3,14 +3,13 @@
  * (c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
  * This software is distributed under the Apache License, Version 2.0,
  * see LICENSE.txt and NOTICE.txt for more information.
- *
- * FileMaker is a trademark of FileMaker, Inc., registered in the U.S. and other countries.
  */
 package main
 
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -21,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -42,26 +42,24 @@ type cli struct {
 	outStream, errStream io.Writer
 }
 
-type accountInfo struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type dbInfo struct {
-	Key string `json:"key"`
-}
-
 type output struct {
-	Token   string `json:"token"`
-	Result  int    `json:"result"`
-	Running bool   `json:"running"`
+	Response struct {
+		Status string `json:"status"`
+		Token  string `json:"token"`
+	} `json:"response"`
+	Messages []struct {
+		Code string `json:"code"`
+		Text string `json:"text"`
+	} `json:"messages"`
+	//Result  int    `json:"result"`
 }
 
 type generalConfigInfo struct {
-	CacheSize         int `json:"cacheSize"`
-	MaxFiles          int `json:"maxFiles"`
-	MaxProConnections int `json:"maxProConnections"`
-	MaxPSOS           int `json:"maxPSOS"`
+	CacheSize                 int  `json:"cacheSize"`
+	MaxFiles                  int  `json:"maxFiles"`
+	MaxProConnections         int  `json:"maxProConnections"`
+	MaxPSOS                   int  `json:"maxPSOS"`
+	StartupRestorationEnabled bool `json:"startupRestorationEnabled"`
 }
 
 type securityConfigInfo struct {
@@ -80,36 +78,48 @@ type xmlConfigInfo struct {
 	Enabled bool `json:"enabled"`
 }
 
-type disconnectMessageInfo struct {
-	Message   string `json:"message"`
-	Gracetime int    `json:"gracetime"`
+type dbInfo struct {
+	Status string `json:"status"`
+	Key    string `json:"key"`
+}
+
+type closeMessageInfo struct {
+	Status      string `json:"status"`
+	MessageText string `json:"messageText"`
+	Force       bool   `json:"force"`
+}
+
+type statusInfo struct {
+	Status string `json:"status"`
 }
 
 type messageInfo struct {
-	Message string `json:"message"`
+	MessageText string `json:"messageText"`
 }
 
-type runningInfo struct {
-	Running bool `json:"running"`
+type scheduleSettingInfo struct {
+	Enabled bool `json:"enabled"`
 }
 
 type params struct {
-	command              string
-	key                  string
-	message              string
-	gracetime            int
-	retry                int
-	running              string
-	enabled              string
-	cachesize            int
-	maxfiles             int
-	maxproconnections    int
-	maxpsos              int
-	requiresecuredb      string
-	characterencoding    string
-	errormessagelanguage string
-	dataprevalidation    bool
-	usefilemakerphp      bool
+	command                   string
+	key                       string
+	messageText               string
+	force                     bool
+	gracetime                 int
+	retry                     int
+	status                    string
+	enabled                   string
+	cachesize                 int
+	maxfiles                  int
+	maxproconnections         int
+	maxpsos                   int
+	startuprestorationenabled bool
+	requiresecuredb           string
+	characterencoding         string
+	errormessagelanguage      string
+	dataprevalidation         bool
+	usefilemakerphp           bool
 }
 
 type commandOptions struct {
@@ -117,6 +127,7 @@ type commandOptions struct {
 	versionFlag bool
 	yesFlag     bool
 	statsFlag   bool
+	forceFlag   bool
 	fqdn        string
 	username    string
 	password    string
@@ -140,6 +151,7 @@ func (c *cli) Run(args []string) int {
 	versionFlag := false
 	yesFlag := false
 	statsFlag := false
+	forceFlag := false
 	graceTime := 90
 	fqdn := ""
 	username := ""
@@ -153,6 +165,7 @@ func (c *cli) Run(args []string) int {
 	commandOptions.versionFlag = false
 	commandOptions.yesFlag = false
 	commandOptions.statsFlag = false
+	commandOptions.forceFlag = false
 	commandOptions.fqdn = ""
 	commandOptions.username = ""
 	commandOptions.password = ""
@@ -172,18 +185,23 @@ func (c *cli) Run(args []string) int {
 	// detect an invalid option
 	for i := 0; i < len(args); i++ {
 		var invalidOption bool
-		allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--client", "--gracetime"}
-		for j := 0; j < len(allowedOptions); j++ {
-			if string([]rune(args[i])[:1]) == "-" {
-				invalidOption = true
-				for _, v := range allowedOptions {
-					if strings.ToLower(args[i]) == v {
-						invalidOption = false
+		if regexp.MustCompile(`\-(\d+)`).Match([]byte(args[i])) == true {
+			// Allow option (ex.: "fmcsadmin get backuptime -1")
+			invalidOption = false
+		} else {
+			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime"}
+			for j := 0; j < len(allowedOptions); j++ {
+				if string([]rune(args[i])[:1]) == "-" {
+					invalidOption = true
+					for _, v := range allowedOptions {
+						if strings.ToLower(args[i]) == v {
+							invalidOption = false
+						}
 					}
-				}
-				if invalidOption == true {
-					exitStatus = outputInvalidOptionErrorMessage(c, args[i])
-					return exitStatus
+					if invalidOption == true {
+						exitStatus = outputInvalidOptionErrorMessage(c, args[i])
+						return exitStatus
+					}
 				}
 			}
 		}
@@ -193,6 +211,7 @@ func (c *cli) Run(args []string) int {
 	versionFlag = cFlags.versionFlag
 	yesFlag = cFlags.yesFlag
 	statsFlag = cFlags.statsFlag
+	forceFlag = cFlags.forceFlag
 	graceTime = cFlags.graceTime
 	key = cFlags.key
 	username = cFlags.username
@@ -237,8 +256,8 @@ func (c *cli) Run(args []string) int {
 						}
 						connectedClients := getClients(u.String(), token, args, "")
 						for i := 0; i < len(idList); i++ {
-							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "close")
-							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{command: "close", message: message})
+							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "close", messageText: message, force: forceFlag})
 							if exitStatus == 0 && err == nil && len(connectedClients) == 0 {
 								// Don't output this message when the clients connected to the specified databases are existing
 								fmt.Fprintln(c.outStream, "File Closed: "+nameList[i])
@@ -309,7 +328,7 @@ func (c *cli) Run(args []string) int {
 							res = "y"
 						} else {
 							r := bufio.NewReader(os.Stdin)
-							fmt.Fprint(c.outStream, "fmcsadmin: really disable a schedule(s)? (y, n) ")
+							fmt.Fprint(c.outStream, "fmcsadmin: really disable schedule(s)? (y, n) ")
 							input, _ := r.ReadString('\n')
 							res = strings.ToLower(strings.TrimSpace(input))
 						}
@@ -322,8 +341,8 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							if id > 0 {
-								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id), "disable")
-								exitStatus, _, err = sendRequest("PUT", u.String(), token, params{})
+								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+								exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "disable"})
 								if exitStatus == 0 && err == nil {
 									u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 									exitStatus = listSchedules(u.String(), token, id)
@@ -364,36 +383,39 @@ func (c *cli) Run(args []string) int {
 								if err == nil {
 									id = cid
 								}
+								if cid == 0 {
+									exitStatus = 11005
+								}
 							}
-							if id > -1 {
-								// check the client connection
-								u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-								idList := getClients(u.String(), token, []string{""}, "NORMAL")
-								connected := false
-								if len(idList) > 0 {
-									if id == 0 {
-										connected = true
-									} else {
+							if id > -1 && exitStatus == 0 {
+								if id == 0 {
+									// disconnect clients
+									exitStatus, err = disconnectAllClient(u, baseURI, token, message, graceTime)
+								} else {
+									// check the client connection
+									u.Path = path.Join(getAPIBasePath(baseURI), "clients")
+									idList := getClients(u.String(), token, []string{""}, "NORMAL")
+									connected := false
+									if len(idList) > 0 && id > 0 {
 										for i := 0; i < len(idList); i++ {
 											if id == idList[i] {
 												connected = true
+												break
 											}
 										}
 									}
-								}
 
-								if connected == true {
-									u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(id), "disconnect")
-									exitStatus, _, err = sendRequest("PUT", u.String(), token, params{message: message, gracetime: graceTime})
-									if exitStatus == 0 {
-										fmt.Fprintln(c.outStream, "Client(s) being disconnected.")
-									}
-								} else {
-									if id == 0 {
-										fmt.Fprintln(c.outStream, "No client is connected.")
+									if connected == true {
+										// disconnect a client
+										u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(id))
+										u.RawQuery = "messageText=" + url.QueryEscape(message) + "&graceTime=" + url.QueryEscape(strconv.Itoa(graceTime))
+										exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
 									} else {
 										exitStatus = 11005
 									}
+								}
+								if exitStatus == 0 {
+									fmt.Fprintln(c.outStream, "Client(s) being disconnected.")
 								}
 							}
 							logout(baseURI, token)
@@ -421,8 +443,8 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id), "enable")
-							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{})
+							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "enable"})
 							if exitStatus == 0 && err == nil {
 								u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 								exitStatus = listSchedules(u.String(), token, id)
@@ -443,37 +465,58 @@ func (c *cli) Run(args []string) int {
 		case "get":
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
+				case "backuptime":
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					if token != "" && err == nil {
+						id := 0
+						if len(cmdArgs) >= 3 {
+							sid, err := strconv.Atoi(cmdArgs[2])
+							if err == nil {
+								id = sid
+							}
+						}
+						u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
+						exitStatus = getBackupTime(u.String(), token, id)
+						logout(baseURI, token)
+					} else if exitStatus != 9 {
+						exitStatus = 10502
+					}
 				case "cwpconfig":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 					if token != "" && err == nil {
-						printFlags := []bool{true, true, true, true, true, true}
+						printOptions := []string{}
 						if len(cmdArgs[2:]) > 0 {
-							printFlags = []bool{false, false, false, false, false, false}
 							for i := 0; i < len(cmdArgs[2:]); i++ {
 								switch strings.ToLower(cmdArgs[2:][i]) {
 								case "enablephp":
-									printFlags[0] = true
+									printOptions = append(printOptions, "enablephp")
 								case "enablexml":
-									printFlags[1] = true
+									printOptions = append(printOptions, "enablexml")
 								case "encoding":
-									printFlags[2] = true
+									printOptions = append(printOptions, "encoding")
 								case "locale":
-									printFlags[3] = true
+									printOptions = append(printOptions, "locale")
 								case "prevalidation":
-									printFlags[4] = true
+									printOptions = append(printOptions, "prevalidation")
 								case "usefmphp":
-									printFlags[5] = true
+									printOptions = append(printOptions, "usefmphp")
 								default:
-									fmt.Println("Invalid configuration name: " + cmdArgs[2:][i])
 									exitStatus = 10001
 								}
 								if exitStatus != 0 {
 									break
 								}
 							}
+						} else {
+							printOptions = append(printOptions, "enablephp")
+							printOptions = append(printOptions, "enablexml")
+							printOptions = append(printOptions, "encoding")
+							printOptions = append(printOptions, "locale")
+							printOptions = append(printOptions, "prevalidation")
+							printOptions = append(printOptions, "usefmphp")
 						}
 						if exitStatus == 0 {
-							_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printFlags)
+							_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
 						}
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
@@ -482,23 +525,20 @@ func (c *cli) Run(args []string) int {
 				case "serverconfig":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 					if token != "" && err == nil {
-						printFlags := []bool{true, true, true, true}
-						printFlag := true
+						printOptions := []string{}
 						if len(cmdArgs[2:]) > 0 {
-							printFlags = []bool{false, false, false, false}
-							printFlag = false
 							for i := 0; i < len(cmdArgs[2:]); i++ {
 								switch strings.ToLower(cmdArgs[2:][i]) {
 								case "cachesize":
-									printFlags[0] = true
+									printOptions = append(printOptions, "cachesize")
 								case "hostedfiles":
-									printFlags[1] = true
+									printOptions = append(printOptions, "hostedfiles")
 								case "proconnections":
-									printFlags[2] = true
+									printOptions = append(printOptions, "proconnections")
 								case "scriptsessions":
-									printFlags[3] = true
+									printOptions = append(printOptions, "scriptsessions")
 								case "securefilesonly":
-									printFlag = true
+									printOptions = append(printOptions, "securefilesonly")
 								default:
 									exitStatus = 10001
 								}
@@ -506,14 +546,58 @@ func (c *cli) Run(args []string) int {
 									break
 								}
 							}
+						} else {
+							printOptions = append(printOptions, "cachesize")
+							printOptions = append(printOptions, "hostedfiles")
+							printOptions = append(printOptions, "proconnections")
+							printOptions = append(printOptions, "scriptsessions")
+							printOptions = append(printOptions, "securefilesonly")
 						}
 						if exitStatus == 0 {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-							_, exitStatus = getServerGeneralConfigurations(u.String(), token, printFlags)
-							if exitStatus == 0 {
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
-								exitStatus = getServerSecurityConfigurations(u.String(), token, printFlag)
+							_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+						}
+						logout(baseURI, token)
+					} else if exitStatus != 9 {
+						exitStatus = 10502
+					}
+				case "serverprefs":
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					if token != "" && err == nil {
+						printOptions := []string{}
+						if len(cmdArgs[2:]) > 0 {
+							for i := 0; i < len(cmdArgs[2:]); i++ {
+								switch strings.ToLower(cmdArgs[2:][i]) {
+								case "maxguests":
+									printOptions = append(printOptions, "maxguests")
+								case "maxfiles":
+									printOptions = append(printOptions, "maxfiles")
+								case "cachesize":
+									printOptions = append(printOptions, "cachesize")
+								case "allowpsos":
+									printOptions = append(printOptions, "allowpsos")
+								case "requiresecuredb":
+									printOptions = append(printOptions, "requiresecuredb")
+								case "startuprestorationenabled":
+									printOptions = append(printOptions, "startuprestorationenabled")
+								default:
+									exitStatus = 10001
+								}
+								if exitStatus != 0 {
+									break
+								}
 							}
+						} else {
+							printOptions = append(printOptions, "maxguests")
+							printOptions = append(printOptions, "maxfiles")
+							printOptions = append(printOptions, "cachesize")
+							printOptions = append(printOptions, "allowpsos")
+							printOptions = append(printOptions, "requiresecuredb")
+							printOptions = append(printOptions, "startuprestorationenabled")
+						}
+						if exitStatus == 0 {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+							_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 						}
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
@@ -592,7 +676,7 @@ func (c *cli) Run(args []string) int {
 						if statsFlag == true {
 							id = 0
 						}
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+						u.Path = path.Join(getAPIBasePath(baseURI), "clients")
 						exitStatus = listClients(u.String(), token, id)
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
@@ -606,7 +690,7 @@ func (c *cli) Run(args []string) int {
 							idList = []int{0}
 						}
 						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-						exitStatus = listFiles(u.String(), token, idList)
+						exitStatus = listFiles(c, u.String(), token, idList)
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
 						exitStatus = 10502
@@ -640,8 +724,8 @@ func (c *cli) Run(args []string) int {
 						fmt.Fprintln(c.outStream, "File Opening: "+nameList[i])
 					}
 					for i := 0; i < len(idList); i++ {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "open")
-						exitStatus, _, err = sendRequest("PUT", u.String(), token, params{key: key})
+						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "open", key: key})
 						if exitStatus == 0 && err == nil {
 							// Note: FileMaker Admin API (Trial) does not validate the encryption key.
 							//       You receive a result code of 0 even if you enter an invalid key.
@@ -684,8 +768,8 @@ func (c *cli) Run(args []string) int {
 						fmt.Fprintln(c.outStream, "File Pausing: "+nameList[i])
 					}
 					for i := 0; i < len(idList); i++ {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "pause")
-						exitStatus, _, err = sendRequest("PUT", u.String(), token, params{})
+						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "pause"})
 						if exitStatus == 0 && err == nil {
 							fmt.Fprintln(c.outStream, "File Paused: "+nameList[i])
 						}
@@ -698,52 +782,41 @@ func (c *cli) Run(args []string) int {
 				exitStatus = 10502
 			}
 		case "restart":
-			if fqdn == "" && (runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
-				if len(cmdArgs[1:]) > 0 {
-					res := ""
-					if yesFlag == true {
-						res = "y"
-					} else {
-						r := bufio.NewReader(os.Stdin)
-						fmt.Fprint(c.outStream, "fmcsadmin: really restart server? (y, n) ")
-						input, _ := r.ReadString('\n')
-						res = strings.ToLower(strings.TrimSpace(input))
-					}
-					if res == "y" {
-						switch strings.ToLower(cmdArgs[1]) {
-						case "server":
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-							if token != "" && err == nil {
-								// stop database server
-								exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
-								if exitStatus == 0 {
-									var running bool
-									for value := 0; ; {
-										time.Sleep(1 * time.Second)
-										value++
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
-										exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
-										if running == false || value > 120 {
-											break
-										}
-									}
-									// start database server
-									exitStatus, _, err = sendRequest("PUT", u.String(), token, params{running: "true"})
-								}
-								logout(baseURI, token)
-							} else if exitStatus != 9 {
-								exitStatus = 10502
-							}
-						default:
-							exitStatus = outputInvalidCommandParameterErrorMessage(c)
-						}
-					}
+			if len(cmdArgs[1:]) > 0 {
+				res := ""
+				if yesFlag == true {
+					res = "y"
 				} else {
-					exitStatus = outputInvalidCommandErrorMessage(c)
+					r := bufio.NewReader(os.Stdin)
+					fmt.Fprint(c.outStream, "fmcsadmin: really restart server? (y, n) ")
+					input, _ := r.ReadString('\n')
+					res = strings.ToLower(strings.TrimSpace(input))
+				}
+				if res == "y" {
+					switch strings.ToLower(cmdArgs[1]) {
+					case "server":
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							// stop database server
+							if forceFlag == true {
+								graceTime = 0
+							}
+							exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
+							if exitStatus == 0 {
+								exitStatus, err = waitStoppingServer(u, baseURI, token)
+								// start database server
+								exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					default:
+						exitStatus = outputInvalidCommandParameterErrorMessage(c)
+					}
 				}
 			} else {
-				// for FileMaker Cloud
-				exitStatus = 3
+				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "resume":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
@@ -759,8 +832,8 @@ func (c *cli) Run(args []string) int {
 						fmt.Fprintln(c.outStream, "File Resuming: "+nameList[i])
 					}
 					for i := 0; i < len(idList); i++ {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "resume")
-						exitStatus, _, err = sendRequest("PUT", u.String(), token, params{})
+						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "resume"})
 						if exitStatus == 0 && err == nil {
 							fmt.Fprintln(c.outStream, "File Resumed: "+nameList[i])
 						}
@@ -786,8 +859,8 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id), "run")
-							exitStatus, _, err = sendRequest("PUT", u.String(), token, params{})
+							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 							if exitStatus == 0 && err == nil {
 								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
 								scheduleName := getScheduleName(u.String(), token, id)
@@ -796,6 +869,8 @@ func (c *cli) Run(args []string) int {
 								} else {
 									exitStatus = 10600
 								}
+							} else {
+								exitStatus = 10600
 							}
 						} else {
 							exitStatus = 10600
@@ -826,8 +901,8 @@ func (c *cli) Run(args []string) int {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
 							var settings []string
-							printFlags := []bool{false, false, false, false, false, false}
-							settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printFlags)
+							printOptions := []string{}
+							settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
 							if err == nil {
 								var results []string
 								results, exitStatus = parseWebConfigurationSettings(c, cmdArgs[2:])
@@ -839,74 +914,95 @@ func (c *cli) Run(args []string) int {
 								preValidationFlag := results[4]
 								useFMPHPFlag := results[5]
 
+								var phpEnabled string
+								var xmlEnabled string
 								var preValidation bool
 								var useFMPHP bool
 
-								if len(phpFlag) > 0 || len(encoding) > 0 || len(locale) > 0 || len(preValidationFlag) > 0 || len(useFMPHPFlag) > 0 {
+								if len(cmdArgs[2:]) > 0 {
+									for i := 0; i < len(cmdArgs[2:]); i++ {
+										if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+											rep := regexp.MustCompile(`(.*)=(.*)`)
+											option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+											switch strings.ToLower(option) {
+											case "enablephp":
+												printOptions = append(printOptions, "enablephp")
+											case "enablexml":
+												printOptions = append(printOptions, "enablexml")
+											case "encoding":
+												printOptions = append(printOptions, "encoding")
+											case "locale":
+												printOptions = append(printOptions, "locale")
+											case "prevalidation":
+												printOptions = append(printOptions, "prevalidation")
+											case "usefmphp":
+												printOptions = append(printOptions, "usefmphp")
+											default:
+												fmt.Println("Invalid configuration name: " + option)
+												exitStatus = 10001
+											}
+										}
+									}
+								} else {
+									printOptions = append(printOptions, "enablephp")
+									printOptions = append(printOptions, "enablexml")
+									printOptions = append(printOptions, "encoding")
+									printOptions = append(printOptions, "locale")
+									printOptions = append(printOptions, "prevalidation")
+									printOptions = append(printOptions, "usefmphp")
+								}
+
+								restartMessageFlag := false
+								if exitStatus == 0 && (len(phpFlag) > 0 || len(encoding) > 0 || len(locale) > 0 || len(preValidationFlag) > 0 || len(useFMPHPFlag) > 0) {
 									if phpFlag == "" {
 										phpFlag = settings[0]
 									} else if strings.ToLower(phpFlag) == "true" {
-										fmt.Println("EnablePHP = true")
+										phpEnabled = "true"
 										if settings[0] == "false" {
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+											restartMessageFlag = true
 										}
 									} else if strings.ToLower(phpFlag) == "false" {
-										fmt.Println("EnablePHP = false")
+										phpEnabled = "false"
 										if settings[0] == "true" {
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+											restartMessageFlag = true
 										}
 									}
 
 									if encoding == "" {
-										encoding = settings[1]
-									} else if strings.ToLower(encoding) == "utf-8" {
-										fmt.Println("Encoding = UTF-8 [ UTF-8 ISO-8859-1 ]")
-									} else if strings.ToLower(encoding) == "iso-8859-1" {
-										fmt.Println("Encoding = ISO-8859-1 [ UTF-8 ISO-8859-1 ]")
+										encoding = settings[2]
 									}
 
 									if locale == "" {
-										locale = settings[2]
-									} else if strings.ToLower(locale) == "en" || strings.ToLower(locale) == "de" || strings.ToLower(locale) == "fr" || strings.ToLower(locale) == "it" || strings.ToLower(locale) == "ja" || strings.ToLower(locale) == "sv" {
-										fmt.Println("Locale = " + strings.ToLower(locale) + " [ en de fr it ja sv ]")
+										locale = settings[3]
 									}
 
 									if preValidationFlag == "" {
-										preValidationFlag = settings[3]
-									} else if strings.ToLower(preValidationFlag) == "true" {
-										fmt.Println("PreValidation = true")
-									} else if strings.ToLower(preValidationFlag) == "false" {
-										fmt.Println("PreValidation = false")
-									}
-									if preValidationFlag == "true" {
+										preValidationFlag = settings[4]
+									} else if preValidationFlag == "true" {
 										preValidation = true
 									} else if preValidationFlag == "false" {
 										preValidation = false
 									}
 
 									if useFMPHPFlag == "" {
-										useFMPHPFlag = settings[4]
+										useFMPHPFlag = settings[5]
 									} else if strings.ToLower(useFMPHPFlag) == "false" && phpFlag == "true" {
-										fmt.Println("UseFMPHP = false")
-										if settings[4] == "true" {
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+										useFMPHP = false
+										if settings[5] == "true" {
+											restartMessageFlag = true
 										}
 									} else {
 										// UseFMPHP is always true when enablePHP is false
-										fmt.Println("UseFMPHP = true")
-										if settings[4] == "false" {
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
-										}
-									}
-									if useFMPHPFlag == "true" {
 										useFMPHP = true
-									} else if useFMPHPFlag == "false" {
-										useFMPHP = false
+										if settings[5] == "false" {
+											restartMessageFlag = true
+										}
 									}
 
 									u.Path = path.Join(getAPIBasePath(baseURI), "php", "config")
 									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-										enabled:              phpFlag,
+										command:              "set",
+										enabled:              phpEnabled,
 										characterencoding:    encoding,
 										errormessagelanguage: locale,
 										dataprevalidation:    preValidation,
@@ -915,13 +1011,21 @@ func (c *cli) Run(args []string) int {
 								}
 
 								if xmlFlag == "true" || xmlFlag == "false" {
-									if xmlFlag == "true" {
-										fmt.Println("EnableXML = true")
-									} else if xmlFlag == "false" {
-										fmt.Println("EnableXML = false")
+									if xmlFlag == "" {
+										xmlFlag = settings[1]
+									} else if strings.ToLower(xmlFlag) == "true" {
+										xmlEnabled = "true"
+									} else if strings.ToLower(xmlFlag) == "false" {
+										xmlEnabled = "false"
 									}
+
 									u.Path = path.Join(getAPIBasePath(baseURI), "xml", "config")
-									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{enabled: xmlFlag})
+									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
+								}
+
+								_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+								if restartMessageFlag == true {
+									fmt.Println("Restart the FileMaker Server background processes to apply the change.")
 								}
 							}
 							logout(baseURI, token)
@@ -936,9 +1040,9 @@ func (c *cli) Run(args []string) int {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
 							var settings []int
-							printFlags := []bool{false, false, false, false}
+							printOptions := []string{}
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-							settings, exitStatus = getServerGeneralConfigurations(u.String(), token, printFlags)
+							settings, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 							if exitStatus == 0 {
 								var results []string
 								results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
@@ -947,9 +1051,10 @@ func (c *cli) Run(args []string) int {
 								maxFiles, _ := strconv.Atoi(results[1])
 								maxProConnections, _ := strconv.Atoi(results[2])
 								maxPSOS, _ := strconv.Atoi(results[3])
-								secureFilesOnlyFlag := results[4]
+								startupRestorationEnabled := results[4]
+								secureFilesOnlyFlag := results[5]
 
-								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || secureFilesOnlyFlag != "" {
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" {
 									if results[0] == "" {
 										cacheSize = settings[0]
 									} else {
@@ -982,36 +1087,57 @@ func (c *cli) Run(args []string) int {
 										}
 									}
 
-									if exitStatus == 0 && (results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "") {
-										if results[0] != "" {
-											fmt.Println("CacheSize = " + strconv.Itoa(cacheSize) + " [default: 512, range: 64-1048576]")
+									printOptions = []string{}
+									if len(cmdArgs[2:]) > 0 {
+										for i := 0; i < len(cmdArgs[2:]); i++ {
+											if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+												rep := regexp.MustCompile(`(.*)=(.*)`)
+												option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+												switch strings.ToLower(option) {
+												case "cachesize":
+													printOptions = append(printOptions, "cachesize")
+												case "hostedfiles":
+													printOptions = append(printOptions, "hostedfiles")
+												case "proconnections":
+													printOptions = append(printOptions, "proconnections")
+												case "scriptsessions":
+													printOptions = append(printOptions, "scriptsessions")
+												case "securefilesonly":
+													printOptions = append(printOptions, "securefilesonly")
+												default:
+													exitStatus = 10001
+												}
+												if exitStatus != 0 {
+													break
+												}
+											}
 										}
-										if results[1] != "" {
-											fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125]")
-										}
-										if results[2] != "" {
-											fmt.Println("ProConnections = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000]")
-										}
-										if results[3] != "" {
-											fmt.Println("ScriptSessions = " + strconv.Itoa(maxPSOS) + " [default: 25, range: 0-500]")
-										}
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-										exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-											cachesize:         cacheSize,
-											maxfiles:          maxFiles,
-											maxproconnections: maxProConnections,
-											maxpsos:           maxPSOS,
-										})
+									} else {
+										printOptions = append(printOptions, "cachesize")
+										printOptions = append(printOptions, "hostedfiles")
+										printOptions = append(printOptions, "proconnections")
+										printOptions = append(printOptions, "scriptsessions")
+										printOptions = append(printOptions, "securefilesonly")
 									}
-
-									if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
-										if secureFilesOnlyFlag == "true" {
-											fmt.Println("SecureFilesOnly = true [default: true]")
-										} else if secureFilesOnlyFlag == "false" {
-											fmt.Println("SecureFilesOnly = false [default: true]")
+									if exitStatus == 0 {
+										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
+												command:           "set",
+												cachesize:         cacheSize,
+												maxfiles:          maxFiles,
+												maxproconnections: maxProConnections,
+												maxpsos:           maxPSOS,
+											})
 										}
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
-										exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{requiresecuredb: secureFilesOnlyFlag})
+
+										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
+											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
+										}
+
+										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+										_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 									}
 								}
 							}
@@ -1022,6 +1148,132 @@ func (c *cli) Run(args []string) int {
 					} else {
 						exitStatus = 10001
 					}
+				case "serverprefs":
+					if len(cmdArgs[2:]) > 0 {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							var settings []int
+							var settingResults []int
+							printOptions := []string{}
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+							settings, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+							if exitStatus == 0 {
+								var results []string
+								results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
+
+								cacheSize, _ := strconv.Atoi(results[0])
+								maxFiles, _ := strconv.Atoi(results[1])
+								maxProConnections, _ := strconv.Atoi(results[2])
+								maxPSOS, _ := strconv.Atoi(results[3])
+								startupRestorationEnabled := false
+								if results[4] == "true" {
+									startupRestorationEnabled = true
+								}
+								secureFilesOnlyFlag := results[5]
+
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" {
+									if results[0] == "" {
+										cacheSize = settings[0]
+									} else {
+										if cacheSize < 64 || cacheSize > 1048576 {
+											exitStatus = 10001
+										}
+									}
+
+									if results[1] == "" {
+										maxFiles = settings[1]
+									} else {
+										if maxFiles < 1 || maxFiles > 125 {
+											exitStatus = 10001
+										}
+									}
+
+									if results[2] == "" {
+										maxProConnections = settings[2]
+									} else {
+										if maxProConnections < 0 || maxProConnections > 2000 {
+											exitStatus = 10001
+										}
+									}
+
+									if results[3] == "" {
+										maxPSOS = settings[3]
+									} else {
+										if maxPSOS < 0 || maxPSOS > 500 {
+											exitStatus = 10001
+										}
+									}
+
+									printOptions = []string{}
+									if len(cmdArgs[2:]) > 0 {
+										for i := 0; i < len(cmdArgs[2:]); i++ {
+											if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+												rep := regexp.MustCompile(`(.*)=(.*)`)
+												option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+												switch strings.ToLower(option) {
+												case "cachesize":
+													printOptions = append(printOptions, "cachesize")
+												case "maxfiles":
+													printOptions = append(printOptions, "maxfiles")
+												case "maxguests":
+													printOptions = append(printOptions, "maxguests")
+												case "allowpsos":
+													printOptions = append(printOptions, "allowpsos")
+												case "startuprestorationenabled":
+													printOptions = append(printOptions, "startuprestorationenabled")
+												case "requiresecuredb":
+													printOptions = append(printOptions, "requiresecuredb")
+												default:
+													exitStatus = 10001
+												}
+												if exitStatus != 0 {
+													break
+												}
+											}
+										}
+									} else {
+										printOptions = append(printOptions, "cachesize")
+										printOptions = append(printOptions, "maxfiles")
+										printOptions = append(printOptions, "maxguests")
+										printOptions = append(printOptions, "allowpsos")
+										printOptions = append(printOptions, "startuprestorationenabled")
+										printOptions = append(printOptions, "requiresecuredb")
+									}
+									if exitStatus == 0 {
+										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
+												command:                   "set",
+												cachesize:                 cacheSize,
+												maxfiles:                  maxFiles,
+												maxproconnections:         maxProConnections,
+												maxpsos:                   maxPSOS,
+												startuprestorationenabled: startupRestorationEnabled,
+											})
+										}
+
+										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
+											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
+										}
+
+										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+										settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+										if settings[4] != settingResults[4] {
+											// check setting of startupRestorationEnabled
+											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+										}
+									}
+								}
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					} else {
+						exitStatus = 10001
+					}
+
 				default:
 					exitStatus = outputInvalidCommandErrorMessage(c)
 				}
@@ -1029,34 +1281,30 @@ func (c *cli) Run(args []string) int {
 				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "start":
-			if fqdn == "" && (runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
-				if len(cmdArgs[1:]) > 0 {
-					switch strings.ToLower(cmdArgs[1]) {
-					case "server":
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
-							var running bool
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
-							exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
-							if running == true {
-								// Service already running
-								exitStatus = 10006
-							} else {
-								exitStatus, _, err = sendRequest("PUT", u.String(), token, params{running: "true"})
-							}
-							logout(baseURI, token)
-						} else if exitStatus != 9 {
-							exitStatus = 10502
+			if len(cmdArgs[1:]) > 0 {
+				switch strings.ToLower(cmdArgs[1]) {
+				case "server":
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					if token != "" && err == nil {
+						var running string
+						u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+						exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+						if running == "RUNNING" {
+							// Service already running
+							exitStatus = 10006
+						} else {
+							// start database server
+							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 						}
-					default:
-						exitStatus = outputInvalidCommandParameterErrorMessage(c)
+						logout(baseURI, token)
+					} else if exitStatus != 9 {
+						exitStatus = 10502
 					}
-				} else {
-					exitStatus = outputInvalidCommandErrorMessage(c)
+				default:
+					exitStatus = outputInvalidCommandParameterErrorMessage(c)
 				}
 			} else {
-				// for FileMaker Cloud
-				exitStatus = 3
+				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "status":
 			if len(cmdArgs[1:]) > 0 {
@@ -1072,7 +1320,7 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+							u.Path = path.Join(getAPIBasePath(baseURI), "clients")
 							exitStatus = listClients(u.String(), token, id)
 						}
 						logout(baseURI, token)
@@ -1086,7 +1334,7 @@ func (c *cli) Run(args []string) int {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "")
 							if len(idList) > 0 {
-								exitStatus = listFiles(u.String(), token, idList)
+								exitStatus = listFiles(c, u.String(), token, idList)
 							}
 						} else {
 							exitStatus = 10001
@@ -1102,37 +1350,40 @@ func (c *cli) Run(args []string) int {
 				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "stop":
-			if fqdn == "" && (runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
-				if len(cmdArgs[1:]) > 0 {
-					res := ""
-					if yesFlag == true {
-						res = "y"
-					} else {
-						r := bufio.NewReader(os.Stdin)
-						fmt.Fprint(c.outStream, "fmcsadmin: really stop server? (y, n) ")
-						input, _ := r.ReadString('\n')
-						res = strings.ToLower(strings.TrimSpace(input))
-					}
-					if res == "y" {
-						switch strings.ToLower(cmdArgs[1]) {
-						case "server":
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-							if token != "" && err == nil {
-								exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
-								logout(baseURI, token)
-							} else if exitStatus != 9 {
-								exitStatus = 10502
-							}
-						default:
-							exitStatus = outputInvalidCommandParameterErrorMessage(c)
-						}
-					}
+			if len(cmdArgs[1:]) > 0 {
+				res := ""
+				if yesFlag == true {
+					res = "y"
 				} else {
-					exitStatus = outputInvalidCommandErrorMessage(c)
+					r := bufio.NewReader(os.Stdin)
+					fmt.Fprint(c.outStream, "fmcsadmin: really stop server? (y, n) ")
+					input, _ := r.ReadString('\n')
+					res = strings.ToLower(strings.TrimSpace(input))
+				}
+				if res == "y" {
+					switch strings.ToLower(cmdArgs[1]) {
+					case "server":
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							message = "Stopping FileMaker Database Engine..."
+							// message = "FileMaker データベースエンジンの停止中..."
+							if forceFlag == true {
+								graceTime = 0
+							}
+							exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
+							if exitStatus == 0 {
+								exitStatus, err = waitStoppingServer(u, baseURI, token)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					default:
+						exitStatus = outputInvalidCommandParameterErrorMessage(c)
+					}
 				}
 			} else {
-				// for FileMaker Cloud
-				exitStatus = 3
+				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		default:
 			if helpFlag == true {
@@ -1162,6 +1413,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	versionFlag := false
 	yesFlag := false
 	statsFlag := false
+	forceFlag := false
 	fqdn := ""
 	username := ""
 	password := ""
@@ -1191,6 +1443,8 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	flags.StringVar(&message, "message", "", "Specify a text message to send to clients.")
 	flags.IntVar(&clientID, "c", -1, "Specify a client number to send a message.")
 	flags.IntVar(&clientID, "client", -1, "Specify a client number to send a message.")
+	flags.BoolVar(&forceFlag, "f", false, "Force database to close or Database Server to stop, immediately disconnecting clients.")
+	flags.BoolVar(&forceFlag, "force", false, "Force database to close or Database Server to stop, immediately disconnecting clients.")
 	flags.IntVar(&graceTime, "t", 90, "Specify time in seconds before client is forced to disconnect.")
 	flags.IntVar(&graceTime, "gracetime", 90, "Specify time in seconds before client is forced to disconnect.")
 
@@ -1209,6 +1463,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	cFlags.versionFlag = cFlags.versionFlag || versionFlag
 	cFlags.yesFlag = cFlags.yesFlag || yesFlag
 	cFlags.statsFlag = cFlags.statsFlag || statsFlag
+	cFlags.forceFlag = cFlags.forceFlag || forceFlag
 	if cFlags.fqdn == "" {
 		cFlags.fqdn = fqdn
 	}
@@ -1250,6 +1505,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 		cFlags.versionFlag = cFlags.versionFlag || subCommandOptions.versionFlag
 		cFlags.yesFlag = cFlags.yesFlag || subCommandOptions.yesFlag
 		cFlags.statsFlag = cFlags.statsFlag || subCommandOptions.statsFlag
+		cFlags.forceFlag = cFlags.forceFlag || subCommandOptions.forceFlag
 		if cFlags.fqdn == "" {
 			cFlags.fqdn = subCommandOptions.fqdn
 		}
@@ -1283,6 +1539,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	maxFiles := ""
 	maxProConnections := ""
 	maxPSOS := ""
+	startupRestorationEnabled := ""
 	secureFilesOnlyFlag := ""
 
 	for i := 0; i < len(str); i++ {
@@ -1293,12 +1550,37 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 		} else if regexp.MustCompile(`hostedfiles=(\d+)`).Match([]byte(val)) == true {
 			rep := regexp.MustCompile(`hostedfiles=(\d+)`)
 			maxFiles = rep.ReplaceAllString(val, "$1")
+		} else if regexp.MustCompile(`maxfiles=(\d+)`).Match([]byte(val)) == true {
+			rep := regexp.MustCompile(`maxfiles=(\d+)`)
+			maxFiles = rep.ReplaceAllString(val, "$1")
+		} else if regexp.MustCompile(`maxguests=(\d+)`).Match([]byte(val)) == true {
+			rep := regexp.MustCompile(`maxguests=(\d+)`)
+			maxProConnections = rep.ReplaceAllString(val, "$1")
 		} else if regexp.MustCompile(`proconnections=(\d+)`).Match([]byte(val)) == true {
 			rep := regexp.MustCompile(`proconnections=(\d+)`)
 			maxProConnections = rep.ReplaceAllString(val, "$1")
+		} else if regexp.MustCompile(`allowpsos=(\d+)`).Match([]byte(val)) == true {
+			rep := regexp.MustCompile(`allowpsos=(\d+)`)
+			maxPSOS = rep.ReplaceAllString(val, "$1")
 		} else if regexp.MustCompile(`scriptsessions=(\d+)`).Match([]byte(val)) == true {
 			rep := regexp.MustCompile(`scriptsessions=(\d+)`)
 			maxPSOS = rep.ReplaceAllString(val, "$1")
+		} else if regexp.MustCompile(`startuprestorationenabled=(.*)`).Match([]byte(val)) == true {
+			if strings.ToLower(str[i]) == "startuprestorationenabled=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "startuprestorationenabled=true" || (regexp.MustCompile(`startuprestorationenabled=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "startuprestorationenabled=0" && str[i] != "startuprestorationenabled=+0" && str[i] != "startuprestorationenabled=-0") {
+				startupRestorationEnabled = "true"
+			} else {
+				startupRestorationEnabled = "false"
+			}
+		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(str[i])) == true {
+			if strings.ToLower(str[i]) == "requiresecuredb=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "requiresecuredb=0" && str[i] != "requiresecuredb=+0" && str[i] != "requiresecuredb=-0") {
+				secureFilesOnlyFlag = "true"
+			} else {
+				secureFilesOnlyFlag = "false"
+			}
 		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(str[i])) == true {
 			if strings.ToLower(str[i]) == "securefilesonly=" {
 				exitStatus = 10001
@@ -1316,6 +1598,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, maxFiles)
 	results = append(results, maxProConnections)
 	results = append(results, maxPSOS)
+	results = append(results, startupRestorationEnabled)
 	results = append(results, secureFilesOnlyFlag)
 
 	return results, exitStatus
@@ -1420,21 +1703,16 @@ func outputInvalidOptionErrorMessage(c *cli, option string) int {
 }
 
 func getHostName(fqdn string) string {
-	baseURI := "http://127.0.0.1:8080"
+	baseURI := "http://127.0.0.1:16001"
 	if len(fqdn) > 0 {
 		baseURI = "https://" + strings.TrimSpace(fqdn)
-	} else if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		baseURI = "http://127.0.0.1:16001"
 	}
 
 	return baseURI
 }
 
 func getAPIBasePath(baseURI string) string {
-	path := "/admin/api/v1"
-	if baseURI == "http://127.0.0.1:16001" {
-		path = "/fmi/admin/api/v1"
-	}
+	path := "/fmi/admin/api/v2"
 
 	return path
 }
@@ -1463,16 +1741,14 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 
 	username, password := getUsernameAndPassword(user, pass)
 	u, _ := url.Parse(baseURI)
-	u.Path = path.Join(getAPIBasePath(baseURI), "user", "login")
+	u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
 
-	d := accountInfo{
-		username,
-		password,
-	}
 	output := output{}
+	body, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
 
-	jsonStr, _ := json.Marshal(d)
-	body, err := callURL("POST", u.String(), "", bytes.NewBuffer([]byte(jsonStr)))
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	if err != nil {
 		exitStatus = 10502
 		return token, exitStatus, err
@@ -1483,8 +1759,15 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 		return token, exitStatus, err
 	}
 
-	if output.Result == 0 && err == nil {
-		token = output.Token
+	code := ""
+	for i := 0; i < len(output.Messages); i++ {
+		if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+			code = output.Messages[i].Code
+			break
+		}
+	}
+	if code == "0" {
+		token = output.Response.Token
 	} else {
 		if p.retry > 0 {
 			fmt.Println("fmcsadmin: Permission denied, please try again.")
@@ -1500,8 +1783,8 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 
 func logout(baseURI string, token string) {
 	u, _ := url.Parse(baseURI)
-	u.Path = path.Join(getAPIBasePath(baseURI), "user", "logout")
-	sendRequest("POST", u.String(), token, params{})
+	u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth", token)
+	sendRequest("DELETE", u.String(), token, params{})
 }
 
 func listClients(url string, token string, id int) int {
@@ -1536,26 +1819,26 @@ func listClients(url string, token string, id int) int {
 	var connectDuration string
 	var appVersion string
 	var appLanguage string
-	var teamLicensed string
+	//var teamLicensed string
 	var fileName string
 	var accountName string
 	var privsetName string
-	var b bool
+	//var b bool
 	var data [][]string
 	var sID int
 
-	err = scan.ScanTree(v, "/clients/clients", &c)
+	err = scan.ScanTree(v, "/response/clients", &c)
 	count = len(c)
 
 	if mode == "NORMAL" {
 		if count > 0 {
 			for i := 0; i < count; i++ {
-				err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/status", &s)
+				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
 				if s == "NORMAL" {
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/id", &s1)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/userName", &userName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
 					data = append(data, []string{s1, userName, computerName, extPriv})
 				}
 			}
@@ -1563,6 +1846,7 @@ func listClients(url string, token string, id int) int {
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetHeader([]string{"Client ID", "User Name", "Computer Name", "Ext Privilege"})
 			table.SetAutoWrapText(false)
+			table.SetAutoFormatHeaders(false)
 			for _, v := range data {
 				table.Append(v)
 			}
@@ -1571,44 +1855,38 @@ func listClients(url string, token string, id int) int {
 	} else {
 		if count > 0 {
 			for i := 0; i < count; i++ {
-				err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/status", &s)
+				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
 				if s == "NORMAL" {
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/id", &s1)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/userName", &userName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/ipaddress", &ipAddress)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/macaddress", &macAddress)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/connectTime", &connectTime)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/connectDuration", &connectDuration)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/appVersion", &appVersion)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/appLanguage", &appLanguage)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/teamLicensed", &b)
-					teamLicensed = ""
-					if b == true {
-						teamLicensed = "Yes"
-					} else {
-						teamLicensed = "No"
-					}
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/guestFiles[0]/filename", &fileName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/guestFiles[0]/accountName", &accountName)
-					err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(i)+"]/guestFiles[0]/privsetName", &privsetName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/ipaddress", &ipAddress)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/macaddress", &macAddress)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectTime", &connectTime)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectDuration", &connectDuration)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appVersion", &appVersion)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appLanguage", &appLanguage)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/filename", &fileName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/accountName", &accountName)
+					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/privsetName", &privsetName)
 
-					connectTime = getDateTimeStringOfCurrentTimeZone(connectTime)
+					connectTime = getDateTimeStringOfCurrentTimeZone(connectTime, "2006/01/02 15:04:05")
 					if regexp.MustCompile(`(.*)\.fmp12`).Match([]byte(fileName)) == true {
 						rep := regexp.MustCompile(`(.*)\.fmp12`)
 						fileName = rep.ReplaceAllString(fileName, "$1")
 					}
 
-					data = append(data, []string{s1, userName, computerName, extPriv, ipAddress, macAddress, connectTime, connectDuration, appVersion, appLanguage, teamLicensed, fileName, accountName, privsetName})
+					data = append(data, []string{s1, userName, computerName, extPriv, ipAddress, macAddress, connectTime, connectDuration, appVersion, appLanguage, fileName, accountName, privsetName})
 				}
 			}
 
 			sID, _ = strconv.Atoi(s1)
 			if id == sID || id == 0 {
 				table := tablewriter.NewWriter(os.Stdout)
-				table.SetHeader([]string{"Client ID", "User Name", "Computer Name", "Ext Privilege", "IP Address", "MAC Address", "Connect Time", "Duration", "App Version", "App Language", "User Connections License", "File Name", "Account Name", "Privilege Set"})
+				table.SetHeader([]string{"Client ID", "User Name", "Computer Name", "Ext Privilege", "IP Address", "MAC Address", "Connect Time", "Duration", "App Version", "App Language", "File Name", "Account Name", "Privilege Set"})
 				table.SetAutoWrapText(false)
+				table.SetAutoFormatHeaders(false)
 				for _, v := range data {
 					table.Append(v)
 				}
@@ -1620,7 +1898,7 @@ func listClients(url string, token string, id int) int {
 	return 0
 }
 
-func listFiles(url string, token string, idList []int) int {
+func listFiles(c *cli, url string, token string, idList []int) int {
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -1628,6 +1906,10 @@ func listFiles(url string, token string, idList []int) int {
 	}
 
 	var v interface{}
+
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
@@ -1640,8 +1922,7 @@ func listFiles(url string, token string, idList []int) int {
 	}
 
 	var totalDbCount int
-	var count int
-	var c []string
+	var count []string
 	var s string
 	var s1 string
 	var fileName string
@@ -1653,49 +1934,52 @@ func listFiles(url string, token string, idList []int) int {
 	var b bool
 	var data [][]string
 
-	err = scan.ScanTree(v, "/totalDBCount", &totalDbCount)
+	err = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
 
 	if mode == "NORMAL" {
 		for i := 0; i < totalDbCount; i++ {
-			err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/status", &s)
+			err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &s)
 			if s == "NORMAL" {
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/folder", &s)
-				fmt.Print(s)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/filename", &s)
-				fmt.Println(s)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s)
+				fmt.Fprint(c.outStream, s)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s)
+				fmt.Fprintln(c.outStream, s)
 			}
 		}
 	} else {
 		for i := 0; i < totalDbCount; i++ {
-			err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/id", &s1)
+			err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &s1)
 			for j := 0; j < len(idList); j++ {
 				if s1 == strconv.Itoa(idList[j]) || idList[j] == 0 {
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/filename", &fileName)
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/clients", &num1)
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/size", &num2)
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/status", &status)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &fileName)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/clients", &num1)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/size", &num2)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &status)
 
-					extPriv = ""
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/enabledExtPrivileges", &c)
-					count = len(c)
-					for j := 0; j < count; j++ {
-						err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/enabledExtPrivileges["+strconv.Itoa(j)+"]", &s)
-						if extPriv == "" {
-							extPriv = s
-						} else {
-							extPriv = extPriv + " " + s
+					if status == "CLOSED" {
+						extPriv = "-"
+					} else {
+						extPriv = ""
+						err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges", &count)
+						for j := 0; j < len(count); j++ {
+							err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges["+strconv.Itoa(j)+"]", &s)
+							if extPriv == "" {
+								extPriv = s
+							} else {
+								extPriv = extPriv + " " + s
+							}
 						}
 					}
 
 					isEncrypted = ""
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/isEncrypted", &b)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/isEncrypted", &b)
 					if b == true {
 						isEncrypted = "Yes"
 					} else {
 						isEncrypted = "No"
 					}
 
-					data = append(data, []string{s1, fileName, strconv.Itoa(num1), strconv.Itoa(num2), status, extPriv, isEncrypted})
+					data = append(data, []string{s1, fileName, strconv.Itoa(num1), strconv.Itoa(num2), status[:1] + strings.ToLower(status[1:]), extPriv, isEncrypted})
 				}
 			}
 		}
@@ -1703,6 +1987,7 @@ func listFiles(url string, token string, idList []int) int {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "File", "Clients", "Size", "Status", "Enabled Extended Privileges", "Encrypted"})
 		table.SetAutoWrapText(false)
+		table.SetAutoFormatHeaders(false)
 		for _, v := range data {
 			table.Append(v)
 		}
@@ -1719,6 +2004,9 @@ func listSchedules(url string, token string, id int) int {
 		return -1
 	}
 
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	var v interface{}
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
@@ -1732,59 +2020,101 @@ func listSchedules(url string, token string, id int) int {
 	var sID int
 	var name string
 	var taskType string
+	var backupType string
+	var filemakerScriptType string
+	var messageType string
+	var scriptSequenceType string
+	var systemScriptType string
+	var verifyType string
 	var lastRun string
 	var nextRun string
-	var enabled string
-	var status int
-	var statusStr string
+	var enabled bool
+	var status string
 	var data [][]string
 
-	err = scan.ScanTree(v, "/schedules", &c)
+	err = scan.ScanTree(v, "/response/schedules", &c)
 	count = len(c)
 
 	if count > 0 {
 		for i := 0; i < count; i++ {
-			statusStr = ""
-			lastRun = ""
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/id", &s1)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/name", &name)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/taskType", &taskType)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/lastRun", &lastRun)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/nextRun", &nextRun)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
-			if enabled == "false" {
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/backupType/resourceType", &backupType)
+			if err != nil {
+				backupType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/filemakerScriptType/resource", &filemakerScriptType)
+			if err != nil {
+				filemakerScriptType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/messageType/resourceType", &messageType)
+			if err != nil {
+				messageType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/scriptSequenceType/resource", &scriptSequenceType)
+			if err != nil {
+				scriptSequenceType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/systemScriptType/osScript", &systemScriptType)
+			if err != nil {
+				systemScriptType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/verifyType/resourceType", &verifyType)
+			if err != nil {
+				verifyType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/lastRun", &lastRun)
+			if err != nil {
+				lastRun = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/nextRun", &nextRun)
+			if err != nil {
+				nextRun = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
+			if enabled == false {
 				nextRun = "Disabled"
 			}
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/status", &status)
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
 
 			sID, _ = strconv.Atoi(s1)
 			if id == sID || id == 0 {
-				lastRun = getDateTimeStringOfCurrentTimeZone(lastRun)
-				nextRun = getDateTimeStringOfCurrentTimeZone(nextRun)
-				statusStr = strconv.Itoa(status)
-				if status == 1 || status == 2 {
-					// 2 : running
-					if lastRun == "" {
-						statusStr = ""
+				if status == "IDLE" || status == "RUNNING" {
+					if lastRun == "" || lastRun == "0000-00-00T00:00:00" {
+						status = ""
 					} else {
-						statusStr = "OK"
+						status = "OK"
 					}
 				}
-
-				data = append(data, []string{s1, name, taskType, lastRun, nextRun, statusStr})
+				if backupType != "" {
+					taskType = "Backup"
+				} else if filemakerScriptType != "" {
+					taskType = "FileMaker Script"
+				} else if messageType != "" {
+					taskType = "Message"
+				} else if scriptSequenceType != "" {
+					taskType = "Script Sequence"
+				} else if systemScriptType != "" {
+					taskType = "System Script"
+				} else if verifyType != "" {
+					taskType = "Verify"
+				}
+				lastRun = getDateTimeStringOfCurrentTimeZone(lastRun, "2006/01/02 15:04")
+				nextRun = getDateTimeStringOfCurrentTimeZone(nextRun, "2006/01/02 15:04")
+				data = append(data, []string{s1, name, taskType, lastRun, nextRun, status})
 			}
 		}
 
 		if len(data) > 0 {
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetAutoWrapText(false)
+			table.SetAutoFormatHeaders(false)
 			for _, v := range data {
 				table.SetHeader([]string{"ID", "Name", "Type", "Last Completed", "Next Run", "Status"})
 				table.Append(v)
 			}
 			table.Render()
 		} else {
-			// Schedule at specified index no longer exists
 			return 10600
 		}
 	}
@@ -1799,6 +2129,9 @@ func getScheduleName(url string, token string, id int) string {
 		return ""
 	}
 
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	var v interface{}
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
@@ -1807,24 +2140,15 @@ func getScheduleName(url string, token string, id int) string {
 		return ""
 	}
 
-	var count int
-	var c []string
 	var s1 string
 	var sID int
 	var name string
 
-	err = scan.ScanTree(v, "/schedules", &c)
-	count = len(c)
-
-	if count > 0 {
-		for i := 0; i < count; i++ {
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/id", &s1)
-			err = scan.ScanTree(v, "/schedules["+strconv.Itoa(i)+"]/name", &name)
-			sID, _ = strconv.Atoi(s1)
-			if id == sID || id == 0 {
-				return name
-			}
-		}
+	err = scan.ScanTree(v, "/response/schedule/id", &s1)
+	err = scan.ScanTree(v, "/response/schedule/name", &name)
+	sID, _ = strconv.Atoi(s1)
+	if id == sID || id == 0 {
+		return name
 	}
 
 	return ""
@@ -1837,17 +2161,15 @@ func sendMessages(u *url.URL, baseURI string, token string, message string, cmdA
 	if len(cmdArgs[1:]) > 0 {
 		args = cmdArgs[1:]
 	}
-	u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+	u.Path = path.Join(getAPIBasePath(baseURI), "clients")
 	idList := getClients(u.String(), token, args, "NORMAL")
-	id := 0
-	if clientID > -1 {
-		idList = append(idList, id)
-	}
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
-			u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(idList[i]), "message")
-			exitStatus = sendMessage(u.String(), token, message)
-			if clientID > -1 {
+			if clientID == -1 || clientID == idList[i] {
+				u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(idList[i]), "message")
+				exitStatus = sendMessage(u.String(), token, message)
+			}
+			if clientID > 0 {
 				break
 			}
 		}
@@ -1865,14 +2187,24 @@ func sendMessage(url string, token string, message string) int {
 	jsonStr, _ := json.Marshal(d)
 	body, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
 
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
+	code := -1
 	output := output{}
 	err = json.Unmarshal(body, &output)
 	if err != nil {
 		fmt.Println(err.Error())
-		return -1
+	} else {
+		for i := 0; i < len(output.Messages); i++ {
+			if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+				code, _ = strconv.Atoi(output.Messages[i].Code)
+				break
+			}
+		}
 	}
 
-	return output.Result
+	return code
 }
 
 func getDatabases(url string, token string, arg []string, status string) ([]int, []string, []string) {
@@ -1901,7 +2233,7 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	var fileID string
 	var decryptHint string
 
-	err = scan.ScanTree(v, "/totalDBCount", &totalDbCount)
+	err = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
 	for i := 0; i < totalDbCount; i++ {
 		for j := 0; j < len(arg)+1; j++ {
 			if j == len(arg) && j > 0 {
@@ -1918,12 +2250,12 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 			}
 
 			if len(folderName) == 0 {
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/filename", &s1)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
-				if regexp.MustCompile(`[0-9]`).Match([]byte(arg[j])) {
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s1)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				if regexp.MustCompile(`^[0-9]+$`).Match([]byte(arg[j])) {
 					// ID
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/id", &fileID)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					if fileID == arg[j] && (status == fileStatus || status == "") {
 						nameList = append(nameList, s1)
 						id, _ = strconv.Atoi(fileID)
@@ -1934,20 +2266,20 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 					// name
 					if (fileName == "" || comparePath(fileName, s1)) && (status == fileStatus || status == "") {
 						nameList = append(nameList, s1)
-						err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/id", &fileID)
+						err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 						id, _ = strconv.Atoi(fileID)
 						idList = append(idList, id)
 						hintList = append(hintList, decryptHint)
 					}
 				}
 			} else {
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/folder", &s1)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/filename", &s2)
-				err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s1)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s2)
+				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
 				if (status == fileStatus || status == "") && (comparePath(s1, folderName) || comparePath(s1+s2, fileName)) {
 					nameList = append(nameList, s2)
-					err = scan.ScanTree(v, "/files/files["+strconv.Itoa(i)+"]/id", &fileID)
+					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					id, _ = strconv.Atoi(fileID)
 					idList = append(idList, id)
 					hintList = append(hintList, decryptHint)
@@ -1999,15 +2331,15 @@ func getClients(url string, token string, arg []string, status string) []int {
 			}
 		}
 
-		err = scan.ScanTree(v, "/clients/clients", &clients)
+		err = scan.ScanTree(v, "/response/clients", &clients)
 		for j := 0; j < len(clients); j++ {
-			err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(j)+"]/guestFiles", &guestFiles)
+			err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles", &guestFiles)
 			for k := 0; k < len(guestFiles); k++ {
-				err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileID)
-				err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileName)
+				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileID)
+				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileName)
 				if len(folderName) == 0 {
 					if fileName == "" || comparePath(fileName, guestFileName) {
-						err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(k)+"]/id", &clientID)
+						err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
 						id, _ = strconv.Atoi(clientID)
 						idList = append(idList, id)
 					}
@@ -2018,7 +2350,7 @@ func getClients(url string, token string, arg []string, status string) []int {
 						err = scan.ScanTree(v, "/files/files["+strconv.Itoa(k)+"]/folder", &directory)
 						if fileID == guestFileID {
 							if comparePath(fileName, directory+guestFileName) {
-								err = scan.ScanTree(v, "/clients/clients["+strconv.Itoa(k)+"]/id", &clientID)
+								err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
 								id, _ = strconv.Atoi(clientID)
 								idList = append(idList, id)
 							}
@@ -2032,13 +2364,15 @@ func getClients(url string, token string, arg []string, status string) []int {
 	return idList
 }
 
-func getServerGeneralConfigurations(url string, token string, printFlags []bool) ([]int, int) {
+func getServerGeneralConfigurations(url string, token string, printOptions []string) ([]int, int) {
 	var settings []int
+	var resultCode string
 	var result int
 	var cacheSize int
 	var maxFiles int
 	var maxProConnections int
 	var maxPSOS int
+	var startupRestorationEnabled bool
 
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
@@ -2052,38 +2386,70 @@ func getServerGeneralConfigurations(url string, token string, printFlags []bool)
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/result", &result)
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
 	if err != nil {
 		return settings, 3
 	}
-	err = scan.ScanTree(v, "/cacheSize", &cacheSize)
-	err = scan.ScanTree(v, "/maxFiles", &maxFiles)
-	err = scan.ScanTree(v, "/maxProConnections", &maxProConnections)
-	err = scan.ScanTree(v, "/maxPSOS", &maxPSOS)
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/cacheSize", &cacheSize)
+	err = scan.ScanTree(v, "/response/maxFiles", &maxFiles)
+	err = scan.ScanTree(v, "/response/maxProConnections", &maxProConnections)
+	err = scan.ScanTree(v, "/response/maxPSOS", &maxPSOS)
+	err = scan.ScanTree(v, "/response/startupRestorationEnabled", &startupRestorationEnabled)
 
 	settings = append(settings, cacheSize)
 	settings = append(settings, maxFiles)
 	settings = append(settings, maxProConnections)
 	settings = append(settings, maxPSOS)
+	if startupRestorationEnabled == true {
+		settings = append(settings, 1)
+	} else {
+		settings = append(settings, 0)
+	}
 
 	// output
-	if printFlags[0] == true {
-		fmt.Println("CacheSize = " + strconv.Itoa(cacheSize) + " [default: 512, range: 64-1048576] ")
-	}
-	if printFlags[1] == true {
-		fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
-	}
-	if printFlags[2] == true {
-		fmt.Println("ProConnections = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000] ")
-	}
-	if printFlags[3] == true {
-		fmt.Println("ScriptSessions = " + strconv.Itoa(maxPSOS) + " [default: 25, range: 0-500] ")
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "maxguests" {
+				fmt.Println("MaxGuests = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000] ")
+			}
+			if option == "maxfiles" {
+				fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+			}
+			if option == "cachesize" {
+				fmt.Println("CacheSize = " + strconv.Itoa(cacheSize) + " [default: 512, range: 64-1048576] ")
+			}
+			if option == "hostedfiles" {
+				fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+			}
+			if option == "proconnections" {
+				fmt.Println("ProConnections = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000] ")
+			}
+			if option == "scriptsessions" {
+				fmt.Println("ScriptSessions = " + strconv.Itoa(maxPSOS) + " [default: 100, range: 0-500] ")
+			} else if option == "allowpsos" {
+				fmt.Println("AllowPSOS = " + strconv.Itoa(maxPSOS) + " [default: 100, range: 0-500] ")
+			}
+
+			if option == "securefilesonly" || option == "requiresecuredb" {
+				getServerSecurityConfigurations(strings.Replace(url, "/general", "/security", 1), token, []string{option})
+			}
+
+			if option == "startuprestorationenabled" {
+				if startupRestorationEnabled == true {
+					fmt.Println("StartupRestorationEnabled = true [default: true] ")
+				} else {
+					fmt.Println("StartupRestorationEnabled = false [default: true] ")
+				}
+			}
+		}
 	}
 
 	return settings, result
 }
 
-func getServerSecurityConfigurations(url string, token string, print bool) int {
+func getServerSecurityConfigurations(url string, token string, printOptions []string) int {
+	var resultCode string
 	var result int
 	var requireSecureDB bool
 	var requireSecureDBStr string
@@ -2100,11 +2466,12 @@ func getServerSecurityConfigurations(url string, token string, print bool) int {
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/result", &result)
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
 	if err != nil {
 		return 3
 	}
-	err = scan.ScanTree(v, "/requireSecureDB", &requireSecureDB)
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/requireSecureDB", &requireSecureDB)
 
 	requireSecureDBStr = "true"
 	if requireSecureDB == false {
@@ -2112,15 +2479,22 @@ func getServerSecurityConfigurations(url string, token string, print bool) int {
 	}
 
 	// output
-	if print == true {
-		fmt.Println("SecureFilesOnly = " + requireSecureDBStr + " [default: true] ")
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "securefilesonly" {
+				fmt.Println("SecureFilesOnly = " + requireSecureDBStr + " [default: true] ")
+			} else if option == "requiresecuredb" {
+				fmt.Println("RequireSecureDB = " + requireSecureDBStr + " [default: true] ")
+			}
+		}
 	}
 
 	return result
 }
 
-func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printFlags []bool) ([]string, int, error) {
+func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
 	var settings []string
+	var resultCode string
 	var result int
 	var enabledPhp bool
 	var enabledPhpStr string
@@ -2149,35 +2523,31 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/result", &result)
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
 	if err != nil {
 		return settings, 3, err
 	}
-	err = scan.ScanTree(v, "/enabled", &enabledPhp)
-	err = scan.ScanTree(v, "/characterEncoding", &characterEncoding)
-	err = scan.ScanTree(v, "/errorMessageLanguage", &errorMessageLanguage)
-	err = scan.ScanTree(v, "/dataPreValidation", &dataPreValidation)
-	err = scan.ScanTree(v, "/useFileMakerPhp", &useFileMakerPhp)
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/enabled", &enabledPhp)
+	err = scan.ScanTree(v, "/response/characterEncoding", &characterEncoding)
+	err = scan.ScanTree(v, "/response/errorMessageLanguage", &errorMessageLanguage)
+	err = scan.ScanTree(v, "/response/dataPreValidation", &dataPreValidation)
+	err = scan.ScanTree(v, "/response/useFileMakerPhp", &useFileMakerPhp)
 
 	enabledPhpStr = "true"
 	if enabledPhp == false {
 		enabledPhpStr = "false"
 	}
-	settings = append(settings, enabledPhpStr)
-	settings = append(settings, characterEncoding)
-	settings = append(settings, errorMessageLanguage)
 
 	dataPreValidationStr = "true"
 	if dataPreValidation == false {
 		dataPreValidationStr = "false"
 	}
-	settings = append(settings, dataPreValidationStr)
 
 	useFileMakerPhpStr = "true"
 	if useFileMakerPhp == false {
 		useFileMakerPhpStr = "false"
 	}
-	settings = append(settings, useFileMakerPhpStr)
 
 	// get XML Technology Configuration
 	u.Path = path.Join(basePath, "xml", "config")
@@ -2193,46 +2563,78 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/result", &result)
-	err = scan.ScanTree(v, "/enabled", &enabledXML)
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return settings, 3, err
+	}
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/enabled", &enabledXML)
 
 	enabledXMLStr = "true"
 	if enabledXML == false {
 		enabledXMLStr = "false"
 	}
 
+	settings = append(settings, enabledPhpStr)
+	settings = append(settings, enabledXMLStr)
+	settings = append(settings, characterEncoding)
+	settings = append(settings, errorMessageLanguage)
+	settings = append(settings, dataPreValidationStr)
+	settings = append(settings, useFileMakerPhpStr)
+
 	// output
-	if printFlags[0] == true {
-		fmt.Println("EnablePHP = " + enabledPhpStr)
-	}
-	if printFlags[1] == true {
-		fmt.Println("EnableXML = " + enabledXMLStr)
-	}
-	if printFlags[2] == true {
-		fmt.Println("Encoding = " + characterEncoding + " [ UTF-8 ISO-8859-1 ]")
-	}
-	if printFlags[3] == true {
-		fmt.Println("Locale = " + errorMessageLanguage + " [ en de fr it ja sv ]")
-	}
-	if printFlags[4] == true {
-		fmt.Println("PreValidation = " + dataPreValidationStr)
-	}
-	if printFlags[5] == true {
-		fmt.Println("UseFMPHP = " + useFileMakerPhpStr)
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "enablephp" {
+				fmt.Println("EnablePHP = " + enabledPhpStr)
+			}
+			if option == "enablexml" {
+				fmt.Println("EnableXML = " + enabledXMLStr)
+			}
+			if option == "encoding" {
+				fmt.Println("Encoding = " + characterEncoding + " [ UTF-8 ISO-8859-1 ]")
+			}
+			if option == "locale" {
+				fmt.Println("Locale = " + errorMessageLanguage + " [ en de fr it ja ]")
+			}
+			if option == "prevalidation" {
+				fmt.Println("PreValidation = " + dataPreValidationStr)
+			}
+			if option == "usefmphp" {
+				fmt.Println("UseFMPHP = " + useFileMakerPhpStr)
+			}
+		}
 	}
 
 	return settings, result, err
 }
 
 func disconnectAllClient(u *url.URL, baseURI string, token string, message string, graceTime int) (int, error) {
-	u.Path = path.Join(getAPIBasePath(baseURI), "clients", "0", "disconnect")
-	exitStatus, _, err := sendRequest("PUT", u.String(), token, params{message: message, gracetime: graceTime})
+	exitStatus := 0
+	var err error
+
+	// check the client connection
+	u.Path = path.Join(getAPIBasePath(baseURI), "clients")
+	idList := getClients(u.String(), token, []string{""}, "NORMAL")
+
+	// disconnect clients
+	if len(idList) > 0 {
+		for i := 0; i < len(idList); i++ {
+			u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(idList[i]))
+			u.RawQuery = "messageText=" + url.QueryEscape(message) + "&graceTime=" + url.QueryEscape(strconv.Itoa(graceTime))
+			exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
+			if err != nil {
+				break
+			}
+		}
+	}
 
 	return exitStatus, err
 }
 
 func stopDatabaseServer(u *url.URL, baseURI string, token string, message string, graceTime int) (int, error) {
 	exitStatus := -1
+	forceFlag := false
 	var err error
 
 	// disconnect clients
@@ -2243,8 +2645,11 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL")
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
-			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]), "close")
-			exitStatus, _, err = sendRequest("PUT", u.String(), token, params{command: "close", message: message})
+			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+			if graceTime == 0 {
+				forceFlag = true
+			}
+			exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "close", messageText: message, force: forceFlag})
 		}
 	}
 
@@ -2261,14 +2666,166 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 
 	// stop database server
 	u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
-	exitStatus, _, err = sendRequest("PUT", u.String(), token, params{running: "false"})
+	exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "STOPPED"})
 
 	return exitStatus, err
+}
+
+func waitStoppingServer(u *url.URL, baseURI string, token string) (int, error) {
+	exitStatus := 0
+	var err error
+	var running string
+
+	for value := 0; ; {
+		time.Sleep(1 * time.Second)
+		value++
+		u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+		exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+		if running == "STOPPED" || value > 120 {
+			break
+		}
+	}
+
+	return exitStatus, err
+}
+
+func getBackupTime(url string, token string, id int) int {
+	body, err := callURL("GET", url, token, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		return -1
+	}
+
+	var v interface{}
+	body2 := []byte(body)
+	err = json.Unmarshal(body2, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	var count int
+	var c []string
+	var s1 string
+	var sID int
+	var name string
+	var taskType string
+	var backupType string
+	var filemakerScriptType string
+	var messageType string
+	var scriptSequenceType string
+	var systemScriptType string
+	var verifyType string
+	var nextRun string
+	var enabled bool
+	var status string
+	var data [][]string
+
+	err = scan.ScanTree(v, "/response/schedules", &c)
+	count = len(c)
+
+	if count > 0 {
+		for i := 0; i < count; i++ {
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/backupType/resourceType", &backupType)
+			if err != nil {
+				backupType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/filemakerScriptType/resource", &filemakerScriptType)
+			if err != nil {
+				filemakerScriptType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/messageType/resourceType", &messageType)
+			if err != nil {
+				messageType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/scriptSequenceType/resource", &scriptSequenceType)
+			if err != nil {
+				scriptSequenceType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/systemScriptType/osScript", &systemScriptType)
+			if err != nil {
+				systemScriptType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/verifyType/resourceType", &verifyType)
+			if err != nil {
+				verifyType = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/nextRun", &nextRun)
+			if err != nil {
+				nextRun = ""
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
+			if enabled == false {
+				nextRun = "Disabled"
+			}
+			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
+
+			sID, _ = strconv.Atoi(s1)
+			if id == sID || id == 0 {
+				if backupType != "" {
+					taskType = "Backup"
+				} else if filemakerScriptType != "" {
+					taskType = "FileMaker Script"
+				} else if messageType != "" {
+					taskType = "Message"
+				} else if scriptSequenceType != "" {
+					taskType = "Script Sequence"
+				} else if systemScriptType != "" {
+					taskType = "System Script"
+				} else if verifyType != "" {
+					taskType = "Verify"
+				}
+				nextRun = getDateTimeStringOfCurrentTimeZone(nextRun, "15:04")
+				if taskType == "Backup" {
+					data = append(data, []string{s1, name, nextRun})
+				}
+			}
+		}
+
+		if len(data) > 0 {
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetAutoWrapText(false)
+			table.SetAutoFormatHeaders(false)
+			for _, v := range data {
+				table.SetHeader([]string{"ID", "Name", "Start time"})
+				table.Append(v)
+			}
+			table.Render()
+		} else {
+			return 10600
+		}
+	}
+
+	return 0
+}
+
+func getVolumeName() string {
+	if runtime.GOOS == "darwin" {
+		files, err := ioutil.ReadDir("/Volumes/")
+		if err != nil {
+			return ""
+		}
+		for _, file := range files {
+			if !file.IsDir() {
+				path, err := filepath.EvalSymlinks("/Volumes/" + file.Name())
+				if err != nil {
+					return ""
+				}
+				if path == "/" {
+					return file.Name()
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 func comparePath(name1 string, name2 string) bool {
 	extName := ".fmp12"
 	pathPrefix := []string{"filelinux:", "filemac:", "filewin:"}
+	volumeName := getVolumeName()
 
 	if name1 == name2 {
 		return true
@@ -2284,9 +2841,17 @@ func comparePath(name1 string, name2 string) bool {
 				return true
 			} else if pathPrefix[i]+name1+extName == name2 {
 				return true
+			} else if pathPrefix[i]+string(os.PathSeparator)+volumeName+name1 == name2 {
+				return true
+			} else if pathPrefix[i]+string(os.PathSeparator)+volumeName+name1+extName == name2 {
+				return true
 			} else if name1 == pathPrefix[i]+name2 {
 				return true
 			} else if name1 == pathPrefix[i]+name2+extName {
+				return true
+			} else if name1 == pathPrefix[i]+string(os.PathSeparator)+volumeName+name2 {
+				return true
+			} else if name1 == pathPrefix[i]+string(os.PathSeparator)+volumeName+name2+extName {
 				return true
 			}
 		}
@@ -2301,96 +2866,123 @@ func outputErrorMessage(code int, c *cli) {
 	}
 }
 
-func sendRequest(method string, url string, token string, p params) (int, bool, error) {
+func sendRequest(method string, url string, token string, p params) (int, string, error) {
 	var jsonStr []byte
+	code := -1
 
-	if len(p.key) > 0 {
+	if ((params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "open") || len(p.key) > 0 {
 		d := dbInfo{
+			"OPENED",
 			p.key,
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "close" {
-		d := messageInfo{
-			p.message,
+		d := closeMessageInfo{
+			"CLOSED",
+			p.messageText,
+			p.force,
 		}
 		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.gracetime).IsValid() == true && p.gracetime >= 0 {
-		d := disconnectMessageInfo{
-			p.message,
-			p.gracetime,
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && (p.command == "resume" || p.command == "pause") {
+		if p.command == "resume" {
+			d := statusInfo{
+				"RESUMED",
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if p.command == "pause" {
+			d := statusInfo{
+				"PAUSED",
+			}
+			jsonStr, _ = json.Marshal(d)
+		}
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "enable" {
+		d := scheduleSettingInfo{
+			true,
 		}
 		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.characterencoding).IsValid() == true && len(p.characterencoding) > 0 {
-		enabled := true
-		if p.enabled == "false" {
-			enabled = false
-		}
-		d := phpConfigInfo{
-			enabled,
-			p.characterencoding,
-			p.errormessagelanguage,
-			p.dataprevalidation,
-			p.usefilemakerphp,
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "disable" {
+		d := scheduleSettingInfo{
+			false,
 		}
 		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.cachesize).IsValid() == true && p.cachesize > 0 {
-		d := generalConfigInfo{
-			p.cachesize,
-			p.maxfiles,
-			p.maxproconnections,
-			p.maxpsos,
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "set" {
+		if strings.HasSuffix(url, "/server/config/general") {
+			d := generalConfigInfo{
+				p.cachesize,
+				p.maxfiles,
+				p.maxproconnections,
+				p.maxpsos,
+				p.startuprestorationenabled,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/server/config/security") {
+			requiresecuredb := true
+			if p.requiresecuredb == "false" {
+				requiresecuredb = false
+			}
+			d := securityConfigInfo{
+				requiresecuredb,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/php/config") {
+			enabled := true
+			if p.enabled == "false" {
+				enabled = false
+			}
+			d := phpConfigInfo{
+				enabled,
+				p.characterencoding,
+				p.errormessagelanguage,
+				p.dataprevalidation,
+				p.usefilemakerphp,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/xml/config") {
+			enabled := true
+			if p.enabled == "false" {
+				enabled = false
+			}
+			d := xmlConfigInfo{
+				enabled,
+			}
+			jsonStr, _ = json.Marshal(d)
 		}
-		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.requiresecuredb).IsValid() == true && len(p.requiresecuredb) > 0 {
-		requiresecuredb := true
-		if p.requiresecuredb == "false" {
-			requiresecuredb = false
-		}
-		d := securityConfigInfo{
-			requiresecuredb,
-		}
-		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.enabled).IsValid() == true && len(p.enabled) > 0 {
-		enabled := true
-		if p.enabled == "false" {
-			enabled = false
-		}
-		d := xmlConfigInfo{
-			enabled,
-		}
-		jsonStr, _ = json.Marshal(d)
-	} else if (params{}) != p && reflect.ValueOf(p.running).IsValid() == true && len(p.running) > 0 {
-		running := true
-		if p.running == "false" {
-			running = false
-		}
-		d := runningInfo{
-			running,
+	} else if (params{}) != p && reflect.ValueOf(p.status).IsValid() == true && (p.status == "RUNNING" || p.status == "STOPPED") {
+		d := statusInfo{
+			p.status,
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else {
 		jsonStr = []byte("")
 	}
 
+	body, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
+
 	// for debugging
 	/*
 		fmt.Println(method)
 		fmt.Println(url)
 		fmt.Println(string(jsonStr))
+		fmt.Println(bytes.NewBuffer([]byte(body)))
 	*/
 
-	body, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
 	if body != nil {
 		output := output{}
 		if json.Unmarshal(body, &output) == nil {
-			return output.Result, output.Running, nil
+			for i := 0; i < len(output.Messages); i++ {
+				if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+					code, _ = strconv.Atoi(output.Messages[i].Code)
+					break
+				}
+			}
+			return code, output.Response.Status, nil
 		}
 	}
 	if err != nil {
-		return -1, false, err
+		return -1, "", err
 	}
 
-	return 0, false, nil
+	return 0, "", nil
 }
 
 func callURL(method string, url string, token string, request io.Reader) ([]byte, error) {
@@ -2404,16 +2996,23 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 		req.Header.Set("Content-Length", "0")
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
+	if token[:6] == "Basic " {
+		req.Header.Set("Authorization", token)
+	} else {
 		req.Header.Set("Authorization", "Bearer "+strings.Replace(strings.Replace(token, "\n", "", -1), "\r", "", -1))
 	}
 	client := &http.Client{Timeout: time.Duration(5) * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
+		fmt.Println(err.Error())
 		return []byte(""), err
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
+
+	// for debugging
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	if err != nil {
 		fmt.Println(err.Error())
 		return []byte(""), err
@@ -2445,6 +3044,10 @@ func getErrorDescription(errorCode int) string {
 		description = "Parameter missing"
 	case 960:
 		description = "Parameter is invalid"
+	case 1700:
+		description = "Resource doesn't exist"
+	case 1708:
+		description = "schedule_id: parameter value is invalid"
 	case 10001:
 		description = "Invalid parameter"
 	case 10006:
@@ -2455,7 +3058,7 @@ func getErrorDescription(errorCode int) string {
 	case 10502:
 		description = "Host unreachable"
 	case 10600:
-		description = "Schedule at specified index no longer exists"
+		description = "Schedule at specified index does not exist"
 	case 10601:
 		description = "Schedule is misconfigured; invalid taskType or run status"
 	case 10603:
@@ -2490,7 +3093,7 @@ func getErrorDescription(errorCode int) string {
 	return description
 }
 
-func getDateTimeStringOfCurrentTimeZone(dateTime string) string {
+func getDateTimeStringOfCurrentTimeZone(dateTime string, outputFormat string) string {
 	var t time.Time
 	_, offset := time.Now().Zone()
 
@@ -2508,13 +3111,13 @@ func getDateTimeStringOfCurrentTimeZone(dateTime string) string {
 						dateTime = ""
 					} else {
 						// for clients (FileMaker Cloud)
-						dateTime = t.Add(time.Second * time.Duration(offset)).Format("2006/01/02 15:04:05")
+						dateTime = t.Add(time.Second * time.Duration(offset)).Format(outputFormat)
 					}
 				}
 			} else {
 				t, _ = time.Parse("2006-01-02 15:04:05 MST", dateTime)
 				if t.Format("2006-01-02") == "0001-01-01" {
-					t, _ = time.Parse("2006-01-02 15:04:05", dateTime)
+					t, _ = time.Parse("2006-01-02T15:04:05", dateTime)
 				}
 				if t.Format("2006-01-02") == "0001-01-01" {
 					t, _ = time.Parse("2006-01-02T15:04:05.000Z", dateTime)
@@ -2522,11 +3125,12 @@ func getDateTimeStringOfCurrentTimeZone(dateTime string) string {
 						dateTime = ""
 					} else {
 						// for clients (FileMaker Server)
-						dateTime = t.Add(time.Second * time.Duration(offset)).Format("2006/01/02 15:04:05")
+						dateTime = t.Add(time.Second * time.Duration(offset)).Format(outputFormat)
 					}
 				} else {
 					// for schedules
-					dateTime = t.Add(time.Second * time.Duration(offset)).Format("2006/01/02 15:04")
+					//dateTime = t.Add(time.Second * time.Duration(offset)).Format("2006/01/02 15:04")
+					dateTime = t.Format(outputFormat)
 				}
 			}
 		}
@@ -2539,9 +3143,8 @@ var helpTextTemplate = `Usage: fmcsadmin [options] [COMMAND]
 
 Description: 
     fmcsadmin is the command line tool to administer the Database Server 
-    component of FileMaker Cloud and FileMaker Server via FileMaker Admin 
-    API. (FileMaker is a trademark of FileMaker, Inc., registered in the 
-    U.S. and other countries.)
+    component of FileMaker Cloud for AWS and FileMaker Server via 
+    FileMaker Admin API.
 
     You can script many tasks with fmcsadmin by using a scripting language 
     that allows execution of shell or terminal commands.
@@ -2569,25 +3172,25 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     DISABLE         Disable schedules
     DISCONNECT      Disconnect clients
     ENABLE          Enable schedules
-    GET             Retrieve server or CWP configuration settings
-                    (for FileMaker Server 17 only)
+    GET             Retrieve server or CWP configuration settings, or retrieve 
+                    the start time of a backup schedule or schedules
+                    (for FileMaker Server 18 only)
     HELP            Get help pages
     LIST            List clients, databases, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
     RESTART         Restart a server process
-                    (for FileMaker Server 17 only)
+                    (for FileMaker Server 18 only)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
     SET             Change server or CWP configuration settings
-                    (for FileMaker Server 17 only)
+                    (for FileMaker Server 18 only)
     START           Start a server process
-                    (for FileMaker Server 17 only)
+                    (for FileMaker Server 18 only)
     STATUS          Get status of clients or databases
     STOP            Stop a server process
-                    (for FileMaker Server 17 only)
-
+                    (for FileMaker Server 18 only)
 `
 
 var commandListHelpTextTemplate2 = `fmcsadmin commands are:
@@ -2597,25 +3200,26 @@ var commandListHelpTextTemplate2 = `fmcsadmin commands are:
     DISABLE         Disable schedules
     DISCONNECT      Disconnect clients
     ENABLE          Enable schedules
-    GET             Retrieve server or CWP configuration settings
-                    (for FileMaker Server 17 only)
+    GET             Retrieve server or CWP configuration settings, or retrieve 
+                    the start time of a backup schedule or schedules
+                    (for FileMaker Server 18 only)
     HELP            Get help pages
     LIST            List clients, databases, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
     RESTART         Restart a server process
-                    (for FileMaker Server 17 only)
+                    (for FileMaker Server 18 only)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
-    SET             Change server or CWP configuration settings
-                    (for FileMaker Server 17 only)
+    SET             Change server or CWP configuration settings, or change the 
+                    start time of a backup schedule
+                    (for FileMaker Server 18 only)
     START           Start a server process
-                    (for FileMaker Server 17 only)
+                    (for FileMaker Server 18 only)
     STATUS          Get status of clients or databases
     STOP            Stop a server process
-                    (for FileMaker Server 17 only)
-
+                    (for FileMaker Server 18 only)
 `
 
 var optionListHelpTextTemplate = `Many fmcsadmin commands take options and parameters.
@@ -2645,7 +3249,7 @@ Parameters:
 General Options: 
     --fqdn                     Specify the Fully Qualified Domain Name (FQDN)
                                of a remote server via HTTPS.
-    -h, --help                 Print help pages.
+    -h, --help                 Print this page.
     -p pass, --password pass   Password to use to authenticate with the server.
     -u user, --username user   Username to use to authenticate with the server.
     -v, --version              Print version information.
@@ -2653,12 +3257,14 @@ General Options:
 
 Options that apply to specific commands:
     -c NUM, --client NUM       Specify a client number to send a message.
+    -f, --force                Force database to close or Database Server 
+                               to stop, immediately disconnecting clients.
     --key encryptpass          Specify the database encryption password.
     -m msg, --message msg      Specify a text message to send to clients. 
     -s, --stats                Return FILE or CLIENT stats.
     -t sec, --gracetime sec    Specify time in seconds before client is forced
                                to disconnect.
-`
+ `
 
 var closeHelpTextTemplate = `Usage: fmcsadmin CLOSE [FILE...] [PATH...] [options]
 
@@ -2674,6 +3280,9 @@ Options:
     -m message, --message message 
         Specifies a text message to be sent to the clients that are being 
         disconnected.
+
+    -f, --force 
+        Forces a database to be closed, immediately disconnecting clients.
 `
 
 var deleteHelpTextTemplate = `Usage: fmcsadmin DELETE [TYPE] [SCHEDULE_NUMBER]
@@ -2730,22 +3339,29 @@ Description:
                         SCHEDULE_NUMBER. Use the LIST SCHEDULES
                         command to obtain the ID number of each
                         schedule.
- 
+
 Options:
     No command specific options.
 `
 
-var getHelpTextTemplate = `Usage: fmcsadmin GET [CONFIG_TYPE] [NAME1 NAME2 ...]
+var getHelpTextTemplate = `Usage: fmcsadmin GET BACKUPTIME [ID]
+       fmcsadmin GET [CONFIG_TYPE] [NAME1 NAME2 ...]
+
 
 Description:
-    Retrieve the server or Custom Web Publishing configurations. 
-	(This command is not supported for FileMaker Cloud.)
+    The GET BACKUPTIME command retrieves the start time of a specified backup 
+    schedule when you use the optional ID parameter. If you omit the optional ID
+    parameter, the start times of all backup schedules are returned.
+
+    The GET CONFIG_TYPE command retrieves the server or Custom Web Publishing 
+    configurations.
+    (The GET CONFIG_TYPE command is not supported for FileMaker Cloud for AWS.)
 
     Valid configuration types of CONFIG_TYPE:
       SERVERCONFIG     Retrieve the server configuration settings.            
       CWPCONFIG        Retrieve the Custom Web Publishing configuration 
                        settings.
-   
+
     Valid configuration names of SERVERCONFIG:
       CACHESIZE        Cache memory allocated by the server, in megabytes.
       HOSTEDFILES      Maximum number of databases that can be hosted.
@@ -2771,13 +3387,15 @@ Description:
     If no configuration name is specified, all supported configurations of the
     corresponding CONFIG_TYPE are listed.
 
+    Note: Input configuration names are not case sensitive.
+
     Examples:
+      fmcsadmin GET BACKUPTIME
+      fmcsadmin GET BACKUPTIME 2
       fmcsadmin GET SERVERCONFIG HOSTEDFILES SCRIPTSESSIONS
       fmcsadmin GET SERVERCONFIG
       fmcsadmin GET CWPCONFIG ENABLEPHP USEFMPHP
       fmcsadmin GET CWPCONFIG
-
-    Note: Input configuration names are not case sensitive.
 `
 
 var listHelpTextTemplate = `Usage: fmcsadmin LIST [TYPE] [options]
@@ -2829,8 +3447,8 @@ var restartHelpTextTemplate = `Usage: fmcsadmin RESTART [TYPE]
 
 Description:
     Restarts the server of specified TYPE. This command stops the server 
-	TYPE and then starts it after a short delay.
-	(This command is not supported for FileMaker Cloud.)
+    TYPE and then starts it after a short delay.
+    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPEs:
         SERVER          Stops then starts the Database Server.
@@ -2878,22 +3496,24 @@ Description:
 Options:
     -m message, --message message
         Specifies the text message to send.
-        
+
     -c, --client
         Specifies a CLIENT_NUMBER.
 `
 
 var setHelpTextTemplate = `Usage: fmcsadmin SET [CONFIG_TYPE] [NAME1=VALUE1 NAME2=VALUE2 ...]
 
+
 Description:
-    Change the server or Custom Web Publishing configuration settings.
-	(This command is not supported for FileMaker Cloud.)
+    The SET CONFIG_TYPE command changes the server or Custom Web Publishing
+    configuration settings.
+    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid configuration types of CONFIG_TYPE:
       SERVERCONFIG     Change the server configuration settings.             
       CWPCONFIG        Change the Custom Web Publishing configuration 
                        settings.
-   
+
     Valid configuration names of SERVERCONFIG:
       CACHESIZE        Cache memory allocated by the server, in megabytes.
       HOSTEDFILES      Maximum number of databases that can be hosted.
@@ -2916,18 +3536,18 @@ Description:
       USEFMPHP         Whether to use the FileMaker version of the PHP engine
                        rather than your own version of PHP.
 
-    Examples:
-      fmsadmin SET SERVERCONFIG CACHESIZE=1024 SECUREFILESONLY=true
-      fmsadmin SET CWPCONFIG ENABLEPHP=true ENCODING=ISO-8859-1 LOCALE=de
-   
     Note: Input configuration names are not case sensitive.
+
+    Examples:
+      fmcsadmin SET SERVERCONFIG CACHESIZE=1024 SECUREFILESONLY=true
+      fmcsadmin SET CWPCONFIG ENABLEPHP=true ENCODING=ISO-8859-1 LOCALE=de
 `
 
 var startHelpTextTemplate = `Usage: fmcsadmin START [TYPE]
 
 Description:
     Starts the server of specified TYPE.
-	(This command is not supported for FileMaker Cloud.)
+    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPE:
         SERVER          Starts the Database Server.
@@ -2954,7 +3574,7 @@ var stopHelpTextTemplate = `Usage: fmcsadmin STOP [TYPE] [options]
 
 Description:
     Stops the server of specified TYPE.
-	(This command is not supported for FileMaker Cloud.)
+    (This command is not supported for FileMaker Cloud.)
 
     Valid server TYPE:
         SERVER          Stops the Database Server. By default, all clients
