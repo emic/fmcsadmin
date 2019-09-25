@@ -1,8 +1,7 @@
 /**
  * fmcsadmin
  * (c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
- * This software is distributed under the Apache License, Version 2.0,
- * see LICENSE.txt and NOTICE.txt for more information.
+ * This software is distributed under the MIT License.
  */
 package main
 
@@ -3162,8 +3161,8 @@ Author:
     Emic Corporation <https://www.emic.co.jp/>
 
 License:
-    This software is distributed under the Apache License, Version 2.0,
-    please see <https://github.com/emic/fmcsadmin/NOTICE.txt> for details.
+    This software is distributed under the MIT License.
+    Please see <https://github.com/emic/fmcsadmin/NOTICE.txt> for details.
 `
 
 var commandListHelpTextTemplate = `fmcsadmin commands are:
