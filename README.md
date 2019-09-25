@@ -46,12 +46,21 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
     fmcsadmin HELP OPTIONS
        Lists available options
 ```
-Note: "--fqdn" option and handling schedule ID 1 is not supported for FileMaker Server.
+Note: Handling schedule ID 1 is not supported for FileMaker Server.
+
+System Requirements
+-----
+- CentOS Linux 7
+- macOS High Sierra 10.13.6 or macOS Mojave 10.14.6
+- Windows 7 or Windows 10
+
+Download
+-----
+Download from the [latest release page](https://github.com/emic/fmcsadmin/releases/latest).
 
 Author
 -----
 Emic Corporation <https://www.emic.co.jp/>
-
 
 License
 -----
