@@ -2,7 +2,8 @@ fmcsadmin
 (c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
 
-Version: 1.0.0 (in development)
+Version: 1.0.0
+Date: September 26, 2019
 - Support and require FileMaker Admin API v2 of FileMaker Server 18 and FileMaker Cloud for AWS 1.18. Released as a stable version.
 - Change to the MIT License.
 - Enable "--fqdn" option for FileMaker Server.
