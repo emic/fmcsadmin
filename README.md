@@ -1,6 +1,6 @@
 fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=master)](https://travis-ci.org/emic/fmcsadmin)
 =========
-fmcsadmin is the command line tool to administer the Database Server component of FileMaker Cloud and FileMaker Server via FileMaker Admin API. FileMaker is a trademark of FileMaker, Inc., registered in the U.S. and other countries.
+fmcsadmin is the command line tool to administer the Database Server component of FileMaker Cloud for AWS and FileMaker Server via FileMaker Admin API.
 
 Installing Source Code
 -----
@@ -21,16 +21,16 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for FileMaker Server 17)
-- Restart a server process (for FileMaker Server 17)
-- Stop a server process (for FileMaker Server 17)
-- Retrieve server or CWP configuration settings (for FileMaker Server 17)
-- Change server or CWP configuration settings (for FileMaker Server 17)
+- Start a server process (for FileMaker Server 18)
+- Restart a server process (for FileMaker Server 18)
+- Stop a server process (for FileMaker Server 18)
+- Retrieve server or CWP configuration settings (for FileMaker Server 18)
+- Change server or CWP configuration settings (for FileMaker Server 18)
 
 Supported Servers
 -----
-- FileMaker Cloud 1.17 (FileMaker Admin API (Trial) in FileMaker Cloud 1.17 will expire on September 27, 2019)
-- FileMaker Server 17 (FileMaker Admin API (Trial) in FileMaker Server 17 will expire on September 27, 2019)
+- FileMaker Cloud for AWS 1.18
+- FileMaker Server 18
 
 Usage
 -----
@@ -46,15 +46,22 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
     fmcsadmin HELP OPTIONS
        Lists available options
 ```
-Note: "--fqdn" option and handling schedule ID 1 is not supported for FileMaker Server 17.
+Note: Handling schedule ID 1 is not supported for FileMaker Server.
+
+System Requirements
+-----
+- CentOS Linux 7
+- macOS High Sierra 10.13.6 or macOS Mojave 10.14.6
+- Windows 7 or Windows 10
+
+Download
+-----
+Download from the [latest release page](https://github.com/emic/fmcsadmin/releases/latest).
 
 Author
 -----
 Emic Corporation <https://www.emic.co.jp/>
 
-
 License
 -----
-This software is distributed under the
-[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0),
-see LICENSE.txt and NOTICE.txt for more information.
+This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
