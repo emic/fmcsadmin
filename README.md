@@ -2,13 +2,6 @@ fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=maste
 =========
 fmcsadmin is the command line tool to administer the Database Server component of FileMaker Cloud for AWS and FileMaker Server via FileMaker Admin API.
 
-Installing Source Code
------
-```
-go get github.com/emic/fmcsadmin
-```
-Note: You need to install Go (not "FileMaker Go").
-
 Features
 -----
 - Close databases
@@ -51,12 +44,19 @@ Note: Handling schedule ID 1 is not supported for FileMaker Server.
 System Requirements
 -----
 - CentOS Linux 7
-- macOS High Sierra 10.13.6 or macOS Mojave 10.14.6
-- Windows 7 or Windows 10
+- macOS High Sierra 10.13.6 or later (tested on macOS Mojave 10.14.6)
+- Windows 7 or later (tested on Windows 10)
 
 Download
 -----
 Download from the [latest release page](https://github.com/emic/fmcsadmin/releases/latest).
+
+Installing Source Code
+-----
+```
+go get github.com/emic/fmcsadmin
+```
+Note: You need to install Go (not "FileMaker Go").
 
 Author
 -----
