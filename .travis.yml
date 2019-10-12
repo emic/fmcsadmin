@@ -2,7 +2,6 @@ dist: xenial
 language: go
 sudo: false
 go:
-  - "1.11"
   - "1.12"
   - "1.13"
   - master 
@@ -28,4 +27,4 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    go: "1.11"
+    go: "1.12"
