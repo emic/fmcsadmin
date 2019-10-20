@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -501,8 +500,6 @@ func TestRunShowStopCommandHelp(t *testing.T) {
 }
 
 func TestRunCloseCommand1(t *testing.T) {
-	t.Parallel()
-
 	running := true
 	url := "http://127.0.0.1:16001/fmi/admin/api/v2/user/auth"
 	_, err := http.Get(url)
@@ -513,17 +510,15 @@ func TestRunCloseCommand1(t *testing.T) {
 	if running == false {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "{\"response\": {\"token\": \"ACCESSTOKEN\", \"totalDBCount\": 1, \"clients\": [], \"databases\": [{\"id\": \"1\", \"filename\": \"TestDB.fmp12\", \"status\": \"NORMAL\", \"folder\": \"filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/Sample/\", \"decryptHint\": \"\"}]}, \"messages\": [{\"code\": \"0\"}]}")
-			if r.URL.Path == "/admin/api/v2/databases/0/close" || r.URL.Path == "/fmi/admin/api/v2/databases/0/close" {
+			if strings.Contains(r.URL.Path, "/fmi/admin/api/v2/databases/") {
 				request, _ := ioutil.ReadAll(r.Body)
-				assert.Equal(t, "MESSAGE", string([]byte(request)))
+				if strings.Contains(string([]byte(request)), "\"status\":\"CLOSED\"") {
+					assert.Equal(t, "{\"status\":\"CLOSED\",\"messageText\":\"TESTMESSAGE\",\"force\":false}", string([]byte(request)))
+				}
 			}
 		})
 
 		address := "127.0.0.1:16001"
-		ci := os.Getenv("TRAVIS")
-		if ci == "true" {
-			address = "127.0.0.1:16001"
-		}
 		l, err := net.Listen("tcp", address)
 		if err != nil {
 			log.Fatal(err)
@@ -538,13 +533,53 @@ func TestRunCloseCommand1(t *testing.T) {
 
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
-	args := strings.Split("fmcsadmin close TestDB -y -u USERNAME -p PASSWORD -m MESSAGE", " ")
+	args := strings.Split("fmcsadmin close TestDB -y -u USERNAME -p PASSWORD -m TESTMESSAGE", " ")
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
-	expected := "TestDB.fmp12"
+	expected := "Closing: TestDB.fmp12"
 	assert.Contains(t, outStream.String(), expected)
 }
 
+func TestRunOpenCommand1(t *testing.T) {
+	running := true
+	url := "http://127.0.0.1:16001/fmi/admin/api/v2/user/auth"
+	_, err := http.Get(url)
+	if err != nil {
+		running = false
+	}
+
+	if running == false {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "{\"response\": {\"token\": \"ACCESSTOKEN\", \"totalDBCount\": 1, \"clients\": [], \"databases\": [{\"id\": \"1\", \"filename\": \"TestDB.fmp12\", \"status\": \"CLOSED\", \"folder\": \"filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/Sample/\", \"decryptHint\": \"\"}]}, \"messages\": [{\"code\": \"0\"}]}")
+			if strings.Contains(r.URL.Path, "/fmi/admin/api/v2/databases/") {
+				request, _ := ioutil.ReadAll(r.Body)
+				if strings.Contains(string([]byte(request)), "\"status\":\"OPENED\"") {
+					assert.Equal(t, "{\"status\":\"OPENED\",\"key\":\"\"}", string([]byte(request)))
+				}
+			}
+		})
+
+		address := "127.0.0.1:16001"
+		l, err := net.Listen("tcp", address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ts := httptest.Server{
+			Listener: l,
+			Config:   &http.Server{Handler: handler},
+		}
+		ts.Start()
+		defer ts.Close()
+	}
+
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+	args := strings.Split("fmcsadmin open TestDB -u USERNAME -p PASSWORD", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "File Opening: TestDB.fmp12"
+	assert.Contains(t, outStream.String(), expected)
+}
 func TestRunStatusCommand1(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
