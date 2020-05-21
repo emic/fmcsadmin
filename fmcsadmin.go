@@ -78,8 +78,9 @@ type xmlConfigInfo struct {
 }
 
 type dbInfo struct {
-	Status string `json:"status"`
-	Key    string `json:"key"`
+	Status  string `json:"status"`
+	Key     string `json:"key"`
+	SaveKey bool   `json:"saveKey"`
 }
 
 type closeMessageInfo struct {
@@ -119,6 +120,7 @@ type params struct {
 	errormessagelanguage      string
 	dataprevalidation         bool
 	usefilemakerphp           bool
+	saveKey                   bool
 }
 
 type commandOptions struct {
@@ -127,6 +129,7 @@ type commandOptions struct {
 	yesFlag     bool
 	statsFlag   bool
 	forceFlag   bool
+	saveKeyFlag bool
 	fqdn        string
 	username    string
 	password    string
@@ -151,6 +154,7 @@ func (c *cli) Run(args []string) int {
 	yesFlag := false
 	statsFlag := false
 	forceFlag := false
+	saveKeyFlag := false
 	graceTime := 90
 	fqdn := ""
 	username := ""
@@ -165,6 +169,7 @@ func (c *cli) Run(args []string) int {
 	commandOptions.yesFlag = false
 	commandOptions.statsFlag = false
 	commandOptions.forceFlag = false
+	commandOptions.saveKeyFlag = false
 	commandOptions.fqdn = ""
 	commandOptions.username = ""
 	commandOptions.password = ""
@@ -188,7 +193,7 @@ func (c *cli) Run(args []string) int {
 			// Allow option (ex.: "fmcsadmin get backuptime -1")
 			invalidOption = false
 		} else {
-			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime"}
+			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey"}
 			for j := 0; j < len(allowedOptions); j++ {
 				if string([]rune(args[i])[:1]) == "-" {
 					invalidOption = true
@@ -211,6 +216,7 @@ func (c *cli) Run(args []string) int {
 	yesFlag = cFlags.yesFlag
 	statsFlag = cFlags.statsFlag
 	forceFlag = cFlags.forceFlag
+	saveKeyFlag = cFlags.saveKeyFlag
 	graceTime = cFlags.graceTime
 	key = cFlags.key
 	username = cFlags.username
@@ -724,9 +730,9 @@ func (c *cli) Run(args []string) int {
 					}
 					for i := 0; i < len(idList); i++ {
 						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
-						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "open", key: key})
+						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "open", key: key, saveKey: saveKeyFlag})
 						if exitStatus == 0 && err == nil {
-							// Note: FileMaker Server 18 Admin API does not validate the encryption key.
+							// Note: FileMaker Admin API does not validate the encryption key.
 							//       You receive a result code of 0 even if you enter an invalid key.
 							var openedID []int
 							for value := 0; ; {
@@ -1413,6 +1419,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	yesFlag := false
 	statsFlag := false
 	forceFlag := false
+	saveKeyFlag := false
 	fqdn := ""
 	username := ""
 	password := ""
@@ -1444,6 +1451,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	flags.IntVar(&clientID, "client", -1, "Specify a client number to send a message.")
 	flags.BoolVar(&forceFlag, "f", false, "Force database to close or Database Server to stop, immediately disconnecting clients.")
 	flags.BoolVar(&forceFlag, "force", false, "Force database to close or Database Server to stop, immediately disconnecting clients.")
+	flags.BoolVar(&saveKeyFlag, "savekey", false, "Save the database encryption password.")
 	flags.IntVar(&graceTime, "t", 90, "Specify time in seconds before client is forced to disconnect.")
 	flags.IntVar(&graceTime, "gracetime", 90, "Specify time in seconds before client is forced to disconnect.")
 
@@ -1463,6 +1471,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	cFlags.yesFlag = cFlags.yesFlag || yesFlag
 	cFlags.statsFlag = cFlags.statsFlag || statsFlag
 	cFlags.forceFlag = cFlags.forceFlag || forceFlag
+	cFlags.saveKeyFlag = cFlags.saveKeyFlag || saveKeyFlag
 	if cFlags.fqdn == "" {
 		cFlags.fqdn = fqdn
 	}
@@ -1505,6 +1514,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 		cFlags.yesFlag = cFlags.yesFlag || subCommandOptions.yesFlag
 		cFlags.statsFlag = cFlags.statsFlag || subCommandOptions.statsFlag
 		cFlags.forceFlag = cFlags.forceFlag || subCommandOptions.forceFlag
+		cFlags.saveKeyFlag = cFlags.saveKeyFlag || subCommandOptions.saveKeyFlag
 		if cFlags.fqdn == "" {
 			cFlags.fqdn = subCommandOptions.fqdn
 		}
@@ -2873,6 +2883,7 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		d := dbInfo{
 			"OPENED",
 			p.key,
+			p.saveKey,
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "close" {
@@ -3261,6 +3272,7 @@ Options that apply to specific commands:
     --key encryptpass          Specify the database encryption password.
     -m msg, --message msg      Specify a text message to send to clients. 
     -s, --stats                Return FILE or CLIENT stats.
+    --savekey                  Save the database encryption password.
     -t sec, --gracetime sec    Specify time in seconds before client is forced
                                to disconnect.
  `
@@ -3425,7 +3437,13 @@ Description:
 
 Options:
     --key encryptpass
-        Specifies the encryption password for database(s) being opened.
+		Specifies the encryption password for database(s) being opened.
+
+    --savekey
+        Saves the encryption password provided with the --key option. The
+        password is saved on the server for each encrypted database being
+        opened. The saved password allows the server to open an encrypted
+        database without specifying the --key option every time.
 `
 
 var pauseHelpTextTemplate = `Usage: fmcsadmin PAUSE [FILE...] [PATH...]

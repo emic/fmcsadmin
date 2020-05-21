@@ -1173,6 +1173,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin open -p PASSWORD TestDB
 	 * fmcsadmin open -u USERNAME -p PASSWORD TestDB
 	 * fmcsadmin open --key ENCRYPTPASS TestDB
+	 * fmcsadmin open --key ENCRYPTPASS --savekey TestDB
 	 */
 	expected = []string{"open", "TestDB"}
 	args = strings.Split("fmcsadmin open TestDB", " ")
@@ -1206,6 +1207,15 @@ func TestGetFlags(t *testing.T) {
 
 	expected = []string{"open"}
 	args = strings.Split("fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD open --key KEY", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, "USERNAME", resultFlags.username)
+	assert.Equal(t, "PASSWORD", resultFlags.password)
+	assert.Equal(t, "KEY", resultFlags.key)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"open"}
+	args = strings.Split("fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD open --key KEY --savekey", " ")
 	cmdArgs, resultFlags, _ = getFlags(args, flags)
 	assert.Equal(t, "example.jp", resultFlags.fqdn)
 	assert.Equal(t, "USERNAME", resultFlags.username)
