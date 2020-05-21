@@ -1,6 +1,6 @@
 /**
  * fmcsadmin
- * (c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
+ * (c) 2017-2020 Emic Corporation <https://www.emic.co.jp/>
  * This software is distributed under the MIT License.
  */
 package main
@@ -726,7 +726,7 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
 						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "open", key: key})
 						if exitStatus == 0 && err == nil {
-							// Note: FileMaker Admin API (Trial) does not validate the encryption key.
+							// Note: FileMaker Server 18 Admin API does not validate the encryption key.
 							//       You receive a result code of 0 even if you enter an invalid key.
 							var openedID []int
 							for value := 0; ; {
@@ -3109,7 +3109,7 @@ func getDateTimeStringOfCurrentTimeZone(dateTime string, outputFormat string) st
 					if t.Format("2006-01-02") == "0001-01-01" {
 						dateTime = ""
 					} else {
-						// for clients (FileMaker Cloud)
+						// for clients (FileMaker Cloud for AWS)
 						dateTime = t.Add(time.Second * time.Duration(offset)).Format(outputFormat)
 					}
 				}
@@ -3173,23 +3173,23 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     ENABLE          Enable schedules
     GET             Retrieve server or CWP configuration settings, or retrieve 
                     the start time of a backup schedule or schedules
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     HELP            Get help pages
     LIST            List clients, databases, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
     RESTART         Restart a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
     SET             Change server or CWP configuration settings
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     START           Start a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     STATUS          Get status of clients or databases
     STOP            Stop a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
 `
 
 var commandListHelpTextTemplate2 = `fmcsadmin commands are:
@@ -3201,24 +3201,24 @@ var commandListHelpTextTemplate2 = `fmcsadmin commands are:
     ENABLE          Enable schedules
     GET             Retrieve server or CWP configuration settings, or retrieve 
                     the start time of a backup schedule or schedules
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     HELP            Get help pages
     LIST            List clients, databases, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
     RESTART         Restart a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
     SET             Change server or CWP configuration settings, or change the 
                     start time of a backup schedule
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     START           Start a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
     STATUS          Get status of clients or databases
     STOP            Stop a server process
-                    (for FileMaker Server 18 only)
+                    (for FileMaker Server 18 or later)
 `
 
 var optionListHelpTextTemplate = `Many fmcsadmin commands take options and parameters.
@@ -3573,7 +3573,7 @@ var stopHelpTextTemplate = `Usage: fmcsadmin STOP [TYPE] [options]
 
 Description:
     Stops the server of specified TYPE.
-    (This command is not supported for FileMaker Cloud.)
+    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPE:
         SERVER          Stops the Database Server. By default, all clients

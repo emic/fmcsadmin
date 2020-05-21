@@ -1,5 +1,5 @@
 fmcsadmin
-(c) 2017-2019 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2020 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
 
 Version: 1.0.1 (in development)

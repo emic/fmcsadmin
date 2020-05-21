@@ -14,16 +14,17 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for FileMaker Server 18)
-- Restart a server process (for FileMaker Server 18)
-- Stop a server process (for FileMaker Server 18)
-- Retrieve server or CWP configuration settings (for FileMaker Server 18)
-- Change server or CWP configuration settings (for FileMaker Server 18)
+- Start a server process (for FileMaker Server 18 or later)
+- Restart a server process (for FileMaker Server 18 or later)
+- Stop a server process (for FileMaker Server 18 or later)
+- Retrieve server or CWP configuration settings (for FileMaker Server 18 or later)
+- Change server or CWP configuration settings (for FileMaker Server 18 or later)
 
 Supported Servers
 -----
-- FileMaker Cloud for AWS 1.18
+- FileMaker Server 19
 - FileMaker Server 18
+- FileMaker Cloud for AWS 1.18
 
 Usage
 -----
@@ -43,9 +44,9 @@ Note: Handling schedule ID 1 is not supported for FileMaker Server.
 
 System Requirements
 -----
-- CentOS Linux 7
-- macOS High Sierra 10.13.6 or later (tested on macOS Mojave 10.14.6)
-- Windows 7 or later (tested on Windows 10)
+- CentOS Linux 7 or later
+- macOS High Sierra 10.13.6 or later
+- Windows 10
 
 Download
 -----
@@ -56,7 +57,7 @@ Installing Source Code
 ```
 go get github.com/emic/fmcsadmin
 ```
-Note: You need to install Go (not "FileMaker Go").
+Note: You need to install Go (not "Claris FileMaker Go").
 
 Author
 -----
