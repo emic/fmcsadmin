@@ -554,7 +554,7 @@ func TestRunOpenCommand1(t *testing.T) {
 			if strings.Contains(r.URL.Path, "/fmi/admin/api/v2/databases/") {
 				request, _ := ioutil.ReadAll(r.Body)
 				if strings.Contains(string([]byte(request)), "\"status\":\"OPENED\"") {
-					assert.Equal(t, "{\"status\":\"OPENED\",\"key\":\"\"}", string([]byte(request)))
+					assert.Equal(t, "{\"status\":\"OPENED\",\"key\":\"\",\"saveKey\":false}", string([]byte(request)))
 				}
 			}
 		})
