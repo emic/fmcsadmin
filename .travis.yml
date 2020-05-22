@@ -2,8 +2,8 @@ dist: xenial
 language: go
 sudo: false
 go:
-  - "1.12"
   - "1.13"
+  - "1.14"
   - master 
 
 matrix:
@@ -27,4 +27,4 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    go: "1.12"
+    go: "1.14"

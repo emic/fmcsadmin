@@ -4,7 +4,7 @@ This software is distributed under the MIT License, see LICENSE.txt and NOTICE.t
 
 Version: 1.1.0 (in development)
 - Support "--savekey" option of "OPEN" command for FileMaker Server 19.
-- Built with Go 1.12.
+- Built with Go 1.14.
 
 Version: 1.0.0
 Date: September 26, 2019
