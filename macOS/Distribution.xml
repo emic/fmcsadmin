@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>fmcsadmin 1.1.0</title>
+    <welcome file="welcome.txt" />
+    <license file="LICENSE.txt" />
+    <pkg-ref id="jp.co.emic.fmcsadmin"/>
+    <options customize="never" require-scripts="false"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="jp.co.emic.fmcsadmin"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="jp.co.emic.fmcsadmin" visible="false">
+        <pkg-ref id="jp.co.emic.fmcsadmin"/>
+    </choice>
+    <pkg-ref id="jp.co.emic.fmcsadmin" version="1.1.0" onConclusion="none">fmcsadmin.pkg</pkg-ref>
+</installer-gui-script>
