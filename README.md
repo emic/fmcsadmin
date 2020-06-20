@@ -1,6 +1,6 @@
 fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=master)](https://travis-ci.org/emic/fmcsadmin)
 =========
-fmcsadmin is the command line tool to administer the Database Server component of FileMaker Cloud for AWS and FileMaker Server via FileMaker Admin API.
+fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Cloud for AWS and Claris FileMaker Server via Claris FileMaker Admin API.
 
 Features
 -----
@@ -14,17 +14,17 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for FileMaker Server 18 or later)
-- Restart a server process (for FileMaker Server 18 or later)
-- Stop a server process (for FileMaker Server 18 or later)
-- Retrieve server or CWP configuration settings (for FileMaker Server 18 or later)
-- Change server or CWP configuration settings (for FileMaker Server 18 or later)
+- Start a server process (for Claris FileMaker Server 18 or later)
+- Restart a server process (for Claris FileMaker Server 18 or later)
+- Stop a server process (for Claris FileMaker Server 18 or later)
+- Retrieve server or CWP configuration settings (for Claris FileMaker Server 18 or later)
+- Change server or CWP configuration settings (for Claris FileMaker Server 18 or later)
 
 Supported Servers
 -----
-- FileMaker Server 19
-- FileMaker Server 18
-- FileMaker Cloud for AWS 1.18
+- Claris FileMaker Server 19
+- Claris FileMaker Server 18
+- Claris FileMaker Cloud for AWS 1.18
 
 Usage
 -----
@@ -40,7 +40,7 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
     fmcsadmin HELP OPTIONS
        Lists available options
 ```
-Note: Handling schedule ID 1 is not supported for FileMaker Server.
+Note: Handling schedule ID 1 is not supported for Claris FileMaker Server.
 
 System Requirements
 -----
