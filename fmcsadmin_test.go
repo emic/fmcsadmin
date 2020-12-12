@@ -194,7 +194,6 @@ func TestRunWithVersionOption2(t *testing.T) {
 	assert.Contains(t, outStream.String(), expected)
 }
 
-/*
 func TestRunDeleteCommand1(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
@@ -216,7 +215,6 @@ func TestRunDeleteCommand2(t *testing.T) {
 	expected := "fmcsadmin: really delete a schedule? (y, n)"
 	assert.Contains(t, outStream.String(), expected)
 }
-*/
 
 func TestRunDisableCommand1(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
@@ -353,6 +351,17 @@ func TestRunShowCloseCommandHelp(t *testing.T) {
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
 	expected := "Usage: fmcsadmin CLOSE [FILE...] [PATH...] [options]"
+	assert.Contains(t, outStream.String(), expected)
+}
+
+func TestRunShowDeleteCommandHelp(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin help delete", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "Usage: fmcsadmin DELETE [TYPE] [SCHEDULE_NUMBER]"
 	assert.Contains(t, outStream.String(), expected)
 }
 
@@ -744,8 +753,62 @@ func TestGetFlags(t *testing.T) {
 	 * delete
 	 * Usage: fmcsadmin DELETE [TYPE] [SCHEDULE_NUMBER]
 	 *
-	 * (Not Implemented)
+	 * fmcsadmin delete schedule 2
+	 * fmcsadmin delete -y schedule 2
+	 * fmcsadmin --fqdn example.jp delete schedule 2
+	 * fmcsadmin --fqdn example.jp delete -y schedule 2
+	 * fmcsadmin --fqdn example.jp -u USERNAME delete schedule 2
+	 * fmcsadmin --fqdn example.jp -u USERNAME delete -y schedule 2
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD delete schedule 2
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD delete -y schedule 2
 	 */
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin delete schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin delete -y schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.yesFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin --fqdn example.jp delete schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin --fqdn example.jp delete -y schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, true, resultFlags.yesFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin --fqdn example.jp -u USERNAME delete schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, "USERNAME", resultFlags.username)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD delete schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, "USERNAME", resultFlags.username)
+	assert.Equal(t, "PASSWORD", resultFlags.password)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"delete", "schedule", "2"}
+	args = strings.Split("fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD -y delete schedule 2", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, "example.jp", resultFlags.fqdn)
+	assert.Equal(t, "USERNAME", resultFlags.username)
+	assert.Equal(t, "PASSWORD", resultFlags.password)
+	assert.Equal(t, true, resultFlags.yesFlag)
+	assert.Equal(t, expected, cmdArgs)
 
 	/*
 	 * disable
@@ -968,7 +1031,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin help commands
 	 * fmcsadmin help options
 	 * fmcsadmin help close
-	 * (Not Implemented) fmcsadmin help delete
+	 * fmcsadmin help delete
 	 * fmcsadmin help disable
 	 * fmcsadmin help disconnect
 	 * fmcsadmin help enable

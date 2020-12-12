@@ -35,8 +35,6 @@ import (
 
 var version string
 
-var availableDeleteCommand = false
-
 type cli struct {
 	outStream, errStream io.Writer
 }
@@ -277,21 +275,21 @@ func (c *cli) Run(args []string) int {
 				}
 			}
 		case "delete":
-			if len(cmdArgs[1:]) > 0 && availableDeleteCommand == true {
-				res := ""
-				if yesFlag == true {
-					res = "y"
-				} else {
-					r := bufio.NewReader(os.Stdin)
-					fmt.Fprint(c.outStream, "fmcsadmin: really delete a schedule? (y, n) ")
-					input, _ := r.ReadString('\n')
-					res = strings.ToLower(strings.TrimSpace(input))
-				}
-				if res == "y" {
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
-						switch strings.ToLower(cmdArgs[1]) {
-						case "schedule":
+			if len(cmdArgs[1:]) > 0 {
+				switch strings.ToLower(cmdArgs[1]) {
+				case "schedule":
+					res := ""
+					if yesFlag == true {
+						res = "y"
+					} else {
+						r := bufio.NewReader(os.Stdin)
+						fmt.Fprint(c.outStream, "fmcsadmin: really delete a schedule? (y, n) ")
+						input, _ := r.ReadString('\n')
+						res = strings.ToLower(strings.TrimSpace(input))
+					}
+					if res == "y" {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
 								sid, err := strconv.Atoi(cmdArgs[2])
@@ -303,6 +301,9 @@ func (c *cli) Run(args []string) int {
 								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
 								scheduleName := getScheduleName(u.String(), token, id)
 								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
+								if err != nil {
+									fmt.Fprintln(c.outStream, err.Error())
+								}
 								if exitStatus == 0 && err == nil {
 									if scheduleName != "" {
 										fmt.Fprintln(c.outStream, "Schedule Deleted: "+scheduleName)
@@ -313,10 +314,10 @@ func (c *cli) Run(args []string) int {
 							} else {
 								exitStatus = 10600
 							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
 						}
-						logout(baseURI, token)
-					} else if exitStatus != 9 {
-						exitStatus = 10502
 					}
 				}
 			} else {
@@ -618,21 +619,13 @@ func (c *cli) Run(args []string) int {
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "commands":
-					if availableDeleteCommand == true {
-						fmt.Fprint(c.outStream, commandListHelpTextTemplate2)
-					} else {
-						fmt.Fprint(c.outStream, commandListHelpTextTemplate)
-					}
+					fmt.Fprint(c.outStream, commandListHelpTextTemplate)
 				case "options":
 					fmt.Fprint(c.outStream, optionListHelpTextTemplate)
 				case "close":
 					fmt.Fprint(c.outStream, closeHelpTextTemplate)
 				case "delete":
-					if availableDeleteCommand == true {
-						fmt.Fprint(c.outStream, deleteHelpTextTemplate)
-					} else {
-						fmt.Fprint(c.outStream, helpTextTemplate)
-					}
+					fmt.Fprint(c.outStream, deleteHelpTextTemplate)
 				case "disable":
 					fmt.Fprint(c.outStream, disableHelpTextTemplate)
 				case "disconnect":
@@ -3153,8 +3146,8 @@ var helpTextTemplate = `Usage: fmcsadmin [options] [COMMAND]
 
 Description: 
     fmcsadmin is the command line tool to administer the Database Server 
-    component of FileMaker Cloud for AWS and FileMaker Server via 
-    FileMaker Admin API.
+    component of Calris FileMaker Server and FileMaker Cloud for AWS via 
+    Claris FileMaker Admin API.
 
     You can script many tasks with fmcsadmin by using a scripting language 
     that allows execution of shell or terminal commands.
@@ -3177,33 +3170,6 @@ License:
 `
 
 var commandListHelpTextTemplate = `fmcsadmin commands are:
-
-    CLOSE           Close databases
-    DISABLE         Disable schedules
-    DISCONNECT      Disconnect clients
-    ENABLE          Enable schedules
-    GET             Retrieve server or CWP configuration settings, or retrieve 
-                    the start time of a backup schedule or schedules
-                    (for FileMaker Server 18 or later)
-    HELP            Get help pages
-    LIST            List clients, databases, or schedules
-    OPEN            Open databases
-    PAUSE           Temporarily stop database access
-    RESTART         Restart a server process
-                    (for FileMaker Server 18 or later)
-    RESUME          Make paused databases available
-    RUN             Run a schedule
-    SEND            Send a message
-    SET             Change server or CWP configuration settings
-                    (for FileMaker Server 18 or later)
-    START           Start a server process
-                    (for FileMaker Server 18 or later)
-    STATUS          Get status of clients or databases
-    STOP            Stop a server process
-                    (for FileMaker Server 18 or later)
-`
-
-var commandListHelpTextTemplate2 = `fmcsadmin commands are:
 
     CLOSE           Close databases
     DELETE          Delete a schedule
@@ -3275,7 +3241,7 @@ Options that apply to specific commands:
     --savekey                  Save the database encryption password.
     -t sec, --gracetime sec    Specify time in seconds before client is forced
                                to disconnect.
- `
+`
 
 var closeHelpTextTemplate = `Usage: fmcsadmin CLOSE [FILE...] [PATH...] [options]
 

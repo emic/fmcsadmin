@@ -1,10 +1,11 @@
 fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=master)](https://travis-ci.org/emic/fmcsadmin)
 =========
-fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Cloud for AWS and Claris FileMaker Server via Claris FileMaker Admin API.
+fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Server and Claris FileMaker Cloud for AWS 1.18 via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
 
 Features
 -----
 - Close databases
+- Delete a schedule
 - Disable schedules
 - Disconnect clients
 - Enable schedules
