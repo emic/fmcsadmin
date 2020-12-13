@@ -48,15 +48,21 @@ type output struct {
 		Code string `json:"code"`
 		Text string `json:"text"`
 	} `json:"messages"`
-	//Result  int    `json:"result"`
 }
 
-type generalConfigInfo struct {
+type generalOldConfigInfo struct {
 	CacheSize                 int  `json:"cacheSize"`
 	MaxFiles                  int  `json:"maxFiles"`
 	MaxProConnections         int  `json:"maxProConnections"`
 	MaxPSOS                   int  `json:"maxPSOS"`
 	StartupRestorationEnabled bool `json:"startupRestorationEnabled"`
+}
+
+type generalConfigInfo struct {
+	CacheSize         int `json:"cacheSize"`
+	MaxFiles          int `json:"maxFiles"`
+	MaxProConnections int `json:"maxProConnections"`
+	MaxPSOS           int `json:"maxPSOS"`
 }
 
 type securityConfigInfo struct {
@@ -113,6 +119,7 @@ type params struct {
 	maxproconnections         int
 	maxpsos                   int
 	startuprestorationenabled bool
+	startuprestorationbuiltin bool
 	requiresecuredb           string
 	characterencoding         string
 	errormessagelanguage      string
@@ -1035,6 +1042,29 @@ func (c *cli) Run(args []string) int {
 					}
 				case "serverconfig":
 					if len(cmdArgs[2:]) > 0 {
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)=(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								switch strings.ToLower(option) {
+								case "cachesize", "hostedfiles", "proconnections", "scriptsessions", "securefilesonly":
+								default:
+									exitStatus = 10001
+								}
+
+								if exitStatus == 10001 {
+									break
+								}
+							} else {
+								exitStatus = 10001
+								break
+							}
+						}
+					} else {
+						exitStatus = 10001
+					}
+
+					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
 							var settings []int
@@ -1085,6 +1115,12 @@ func (c *cli) Run(args []string) int {
 										}
 									}
 
+									startupRestorationBuiltin := true
+									if settings[4] == -1 {
+										// for Claris FileMaker Server 19.1.2
+										startupRestorationBuiltin = false
+									}
+
 									printOptions = []string{}
 									if len(cmdArgs[2:]) > 0 {
 										for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1121,11 +1157,12 @@ func (c *cli) Run(args []string) int {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-												command:           "set",
-												cachesize:         cacheSize,
-												maxfiles:          maxFiles,
-												maxproconnections: maxProConnections,
-												maxpsos:           maxPSOS,
+												command:                   "set",
+												cachesize:                 cacheSize,
+												maxfiles:                  maxFiles,
+												maxproconnections:         maxProConnections,
+												maxpsos:                   maxPSOS,
+												startuprestorationbuiltin: startupRestorationBuiltin,
 											})
 										}
 
@@ -1143,11 +1180,32 @@ func (c *cli) Run(args []string) int {
 						} else if exitStatus != 9 {
 							exitStatus = 10502
 						}
-					} else {
-						exitStatus = 10001
 					}
 				case "serverprefs":
 					if len(cmdArgs[2:]) > 0 {
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)=(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								switch strings.ToLower(option) {
+								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
+								default:
+									exitStatus = 3
+								}
+
+								if exitStatus == 3 {
+									break
+								}
+							} else {
+								exitStatus = 10001
+								break
+							}
+						}
+					} else {
+						exitStatus = 10001
+					}
+
+					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
 							var settings []int
@@ -1202,6 +1260,12 @@ func (c *cli) Run(args []string) int {
 										}
 									}
 
+									startupRestorationBuiltin := true
+									if settings[4] == -1 {
+										// for Claris FileMaker Server 19.1.2
+										startupRestorationBuiltin = false
+									}
+
 									printOptions = []string{}
 									if len(cmdArgs[2:]) > 0 {
 										for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1222,7 +1286,7 @@ func (c *cli) Run(args []string) int {
 												case "requiresecuredb":
 													printOptions = append(printOptions, "requiresecuredb")
 												default:
-													exitStatus = 10001
+													exitStatus = 3
 												}
 												if exitStatus != 0 {
 													break
@@ -1247,6 +1311,7 @@ func (c *cli) Run(args []string) int {
 												maxproconnections:         maxProConnections,
 												maxpsos:                   maxPSOS,
 												startuprestorationenabled: startupRestorationEnabled,
+												startuprestorationbuiltin: startupRestorationBuiltin,
 											})
 										}
 
@@ -1257,7 +1322,7 @@ func (c *cli) Run(args []string) int {
 
 										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 										settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
-										if settings[4] != settingResults[4] {
+										if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
 											// check setting of startupRestorationEnabled
 											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
 										}
@@ -1268,10 +1333,7 @@ func (c *cli) Run(args []string) int {
 						} else if exitStatus != 9 {
 							exitStatus = 10502
 						}
-					} else {
-						exitStatus = 10001
 					}
-
 				default:
 					exitStatus = outputInvalidCommandErrorMessage(c)
 				}
@@ -2397,16 +2459,26 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 	err = scan.ScanTree(v, "/response/maxFiles", &maxFiles)
 	err = scan.ScanTree(v, "/response/maxProConnections", &maxProConnections)
 	err = scan.ScanTree(v, "/response/maxPSOS", &maxPSOS)
+	startupRestorationBuiltin := true
 	err = scan.ScanTree(v, "/response/startupRestorationEnabled", &startupRestorationEnabled)
+	if err != nil {
+		// for Claris FileMaker Server 19.1.2
+		startupRestorationBuiltin = false
+	}
 
 	settings = append(settings, cacheSize)
 	settings = append(settings, maxFiles)
 	settings = append(settings, maxProConnections)
 	settings = append(settings, maxPSOS)
-	if startupRestorationEnabled == true {
-		settings = append(settings, 1)
+	if startupRestorationBuiltin == true {
+		if startupRestorationEnabled == true {
+			settings = append(settings, 1)
+		} else {
+			settings = append(settings, 0)
+		}
 	} else {
-		settings = append(settings, 0)
+		// for Claris FileMaker Server 19.1.2
+		settings = append(settings, -1)
 	}
 
 	// output
@@ -2437,7 +2509,7 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 				getServerSecurityConfigurations(strings.Replace(url, "/general", "/security", 1), token, []string{option})
 			}
 
-			if option == "startuprestorationenabled" {
+			if startupRestorationBuiltin == true && option == "startuprestorationenabled" {
 				if startupRestorationEnabled == true {
 					fmt.Println("StartupRestorationEnabled = true [default: true] ")
 				} else {
@@ -2909,13 +2981,22 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "set" {
-		if strings.HasSuffix(url, "/server/config/general") {
-			d := generalConfigInfo{
+		if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == true {
+			d := generalOldConfigInfo{
 				p.cachesize,
 				p.maxfiles,
 				p.maxproconnections,
 				p.maxpsos,
 				p.startuprestorationenabled,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == false {
+			// for Claris FileMaker Server 19.1.2
+			d := generalConfigInfo{
+				p.cachesize,
+				p.maxfiles,
+				p.maxproconnections,
+				p.maxpsos,
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(url, "/server/config/security") {

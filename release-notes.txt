@@ -4,7 +4,10 @@ This software is distributed under the MIT License, see LICENSE.txt and NOTICE.t
 
 Version: 1.2.0 (in development)
 - Add "DELETE" command to delete a schedule.
+- Modify behavior of outputting error messages for invalid parameters when using "SET SERVERCONFIG" command.
+- Change error code for unavailable commands when using "SET SERVERPREFS" command.
 - Built with Go 1.15.
+- [BUG FIX] Fix compatibility with Claris FileMaker Server 19.1.2 when using "SET SERVERCONFIG" command and "SET SERVERPREFS" command.
 
 Version: 1.1.0
 Date: June 17, 2020
