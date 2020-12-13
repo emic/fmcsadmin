@@ -536,43 +536,63 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 10502
 					}
 				case "serverconfig":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
-						printOptions := []string{}
-						if len(cmdArgs[2:]) > 0 {
-							for i := 0; i < len(cmdArgs[2:]); i++ {
-								switch strings.ToLower(cmdArgs[2:][i]) {
-								case "cachesize":
-									printOptions = append(printOptions, "cachesize")
-								case "hostedfiles":
-									printOptions = append(printOptions, "hostedfiles")
-								case "proconnections":
-									printOptions = append(printOptions, "proconnections")
-								case "scriptsessions":
-									printOptions = append(printOptions, "scriptsessions")
-								case "securefilesonly":
-									printOptions = append(printOptions, "securefilesonly")
+					if len(cmdArgs[2:]) > 0 {
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								switch strings.ToLower(option) {
+								case "cachesize", "hostedfiles", "proconnections", "scriptsessions", "securefilesonly":
 								default:
 									exitStatus = 10001
 								}
-								if exitStatus != 0 {
+
+								if exitStatus == 10001 {
 									break
 								}
 							}
-						} else {
-							printOptions = append(printOptions, "cachesize")
-							printOptions = append(printOptions, "hostedfiles")
-							printOptions = append(printOptions, "proconnections")
-							printOptions = append(printOptions, "scriptsessions")
-							printOptions = append(printOptions, "securefilesonly")
 						}
-						if exitStatus == 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-							_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+					}
+
+					if exitStatus == 0 {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							printOptions := []string{}
+							if len(cmdArgs[2:]) > 0 {
+								for i := 0; i < len(cmdArgs[2:]); i++ {
+									switch strings.ToLower(cmdArgs[2:][i]) {
+									case "cachesize":
+										printOptions = append(printOptions, "cachesize")
+									case "hostedfiles":
+										printOptions = append(printOptions, "hostedfiles")
+									case "proconnections":
+										printOptions = append(printOptions, "proconnections")
+									case "scriptsessions":
+										printOptions = append(printOptions, "scriptsessions")
+									case "securefilesonly":
+										printOptions = append(printOptions, "securefilesonly")
+									default:
+										exitStatus = 10001
+									}
+									if exitStatus != 0 {
+										break
+									}
+								}
+							} else {
+								printOptions = append(printOptions, "cachesize")
+								printOptions = append(printOptions, "hostedfiles")
+								printOptions = append(printOptions, "proconnections")
+								printOptions = append(printOptions, "scriptsessions")
+								printOptions = append(printOptions, "securefilesonly")
+							}
+							if exitStatus == 0 {
+								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
 						}
-						logout(baseURI, token)
-					} else if exitStatus != 9 {
-						exitStatus = 10502
 					}
 				case "serverprefs":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
