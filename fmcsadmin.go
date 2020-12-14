@@ -495,45 +495,76 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 10502
 					}
 				case "cwpconfig":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
-						printOptions := []string{}
-						if len(cmdArgs[2:]) > 0 {
-							for i := 0; i < len(cmdArgs[2:]); i++ {
-								switch strings.ToLower(cmdArgs[2:][i]) {
-								case "enablephp":
-									printOptions = append(printOptions, "enablephp")
-								case "enablexml":
-									printOptions = append(printOptions, "enablexml")
-								case "encoding":
-									printOptions = append(printOptions, "encoding")
-								case "locale":
-									printOptions = append(printOptions, "locale")
-								case "prevalidation":
-									printOptions = append(printOptions, "prevalidation")
-								case "usefmphp":
-									printOptions = append(printOptions, "usefmphp")
-								default:
+					if len(cmdArgs[2:]) > 0 {
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								if runtime.GOOS == "linux" && fqdn == "" {
+									// Not Supported
 									exitStatus = 10001
+								} else {
+									switch strings.ToLower(option) {
+									case "enablephp", "enablexml", "encoding", "locale", "prevalidation", "usefmphp":
+									default:
+										exitStatus = 10001
+									}
 								}
-								if exitStatus != 0 {
+
+								if exitStatus == 10001 {
+									fmt.Fprintln(c.outStream, "Invalid configuration name: "+option)
 									break
 								}
 							}
-						} else {
-							printOptions = append(printOptions, "enablephp")
-							printOptions = append(printOptions, "enablexml")
-							printOptions = append(printOptions, "encoding")
-							printOptions = append(printOptions, "locale")
-							printOptions = append(printOptions, "prevalidation")
-							printOptions = append(printOptions, "usefmphp")
 						}
-						if exitStatus == 0 {
-							_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+					}
+
+					if exitStatus == 0 {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							printOptions := []string{}
+							if len(cmdArgs[2:]) > 0 {
+								for i := 0; i < len(cmdArgs[2:]); i++ {
+									switch strings.ToLower(cmdArgs[2:][i]) {
+									case "enablephp":
+										printOptions = append(printOptions, "enablephp")
+									case "enablexml":
+										printOptions = append(printOptions, "enablexml")
+									case "encoding":
+										printOptions = append(printOptions, "encoding")
+									case "locale":
+										printOptions = append(printOptions, "locale")
+									case "prevalidation":
+										printOptions = append(printOptions, "prevalidation")
+									case "usefmphp":
+										printOptions = append(printOptions, "usefmphp")
+									default:
+										exitStatus = 10001
+									}
+									if exitStatus != 0 {
+										break
+									}
+								}
+							} else {
+								if runtime.GOOS == "linux" && fqdn == "" {
+									// Not Supported
+									exitStatus = 21
+								} else {
+									printOptions = append(printOptions, "enablephp")
+									printOptions = append(printOptions, "enablexml")
+									printOptions = append(printOptions, "encoding")
+									printOptions = append(printOptions, "locale")
+									printOptions = append(printOptions, "prevalidation")
+									printOptions = append(printOptions, "usefmphp")
+								}
+							}
+							if exitStatus == 0 {
+								_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
 						}
-						logout(baseURI, token)
-					} else if exitStatus != 9 {
-						exitStatus = 10502
 					}
 				case "serverconfig":
 					if len(cmdArgs[2:]) > 0 {
@@ -923,139 +954,171 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "cwpconfig":
 					if len(cmdArgs[2:]) > 0 {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
-							var settings []string
-							printOptions := []string{}
-							settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
-							if err == nil {
-								var results []string
-								results, exitStatus = parseWebConfigurationSettings(c, cmdArgs[2:])
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)=(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								if runtime.GOOS == "linux" && fqdn == "" {
+									// Not Supported
+									exitStatus = 10001
+								} else {
+									switch strings.ToLower(option) {
+									case "enablephp", "enablexml", "encoding", "locale", "prevalidation", "usefmphp":
+									default:
+										exitStatus = 10001
+									}
+								}
 
-								phpFlag := results[0]
-								xmlFlag := results[1]
-								encoding := results[2]
-								locale := results[3]
-								preValidationFlag := results[4]
-								useFMPHPFlag := results[5]
+								if exitStatus == 10001 {
+									fmt.Fprintln(c.outStream, "Invalid configuration name: "+option)
+									break
+								}
+							} else {
+								exitStatus = 10001
+								break
+							}
+						}
 
-								var phpEnabled string
-								var xmlEnabled string
-								var preValidation bool
-								var useFMPHP bool
+						if exitStatus == 0 {
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							if token != "" && err == nil {
+								var settings []string
+								printOptions := []string{}
+								settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+								if err == nil {
+									var results []string
+									results, exitStatus = parseWebConfigurationSettings(c, cmdArgs[2:])
 
-								if len(cmdArgs[2:]) > 0 {
-									for i := 0; i < len(cmdArgs[2:]); i++ {
-										if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
-											rep := regexp.MustCompile(`(.*)=(.*)`)
-											option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
-											switch strings.ToLower(option) {
-											case "enablephp":
-												printOptions = append(printOptions, "enablephp")
-											case "enablexml":
-												printOptions = append(printOptions, "enablexml")
-											case "encoding":
-												printOptions = append(printOptions, "encoding")
-											case "locale":
-												printOptions = append(printOptions, "locale")
-											case "prevalidation":
-												printOptions = append(printOptions, "prevalidation")
-											case "usefmphp":
-												printOptions = append(printOptions, "usefmphp")
-											default:
-												fmt.Println("Invalid configuration name: " + option)
-												exitStatus = 10001
+									phpFlag := results[0]
+									xmlFlag := results[1]
+									encoding := results[2]
+									locale := results[3]
+									preValidationFlag := results[4]
+									useFMPHPFlag := results[5]
+
+									var phpEnabled string
+									var xmlEnabled string
+									var preValidation bool
+									var useFMPHP bool
+
+									if len(cmdArgs[2:]) > 0 {
+										for i := 0; i < len(cmdArgs[2:]); i++ {
+											if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+												rep := regexp.MustCompile(`(.*)=(.*)`)
+												option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+												switch strings.ToLower(option) {
+												case "enablephp":
+													printOptions = append(printOptions, "enablephp")
+												case "enablexml":
+													printOptions = append(printOptions, "enablexml")
+												case "encoding":
+													printOptions = append(printOptions, "encoding")
+												case "locale":
+													printOptions = append(printOptions, "locale")
+												case "prevalidation":
+													printOptions = append(printOptions, "prevalidation")
+												case "usefmphp":
+													printOptions = append(printOptions, "usefmphp")
+												default:
+													fmt.Fprintln(c.outStream, "Invalid configuration name: "+option)
+													exitStatus = 10001
+												}
+											}
+											if exitStatus != 0 {
+												break
 											}
 										}
-									}
-								} else {
-									printOptions = append(printOptions, "enablephp")
-									printOptions = append(printOptions, "enablexml")
-									printOptions = append(printOptions, "encoding")
-									printOptions = append(printOptions, "locale")
-									printOptions = append(printOptions, "prevalidation")
-									printOptions = append(printOptions, "usefmphp")
-								}
-
-								restartMessageFlag := false
-								if exitStatus == 0 && (len(phpFlag) > 0 || len(encoding) > 0 || len(locale) > 0 || len(preValidationFlag) > 0 || len(useFMPHPFlag) > 0) {
-									if phpFlag == "" {
-										phpFlag = settings[0]
-									} else if strings.ToLower(phpFlag) == "true" {
-										phpEnabled = "true"
-										if settings[0] == "false" {
-											restartMessageFlag = true
-										}
-									} else if strings.ToLower(phpFlag) == "false" {
-										phpEnabled = "false"
-										if settings[0] == "true" {
-											restartMessageFlag = true
-										}
-									}
-
-									if encoding == "" {
-										encoding = settings[2]
-									}
-
-									if locale == "" {
-										locale = settings[3]
-									}
-
-									if preValidationFlag == "" {
-										preValidationFlag = settings[4]
-									} else if preValidationFlag == "true" {
-										preValidation = true
-									} else if preValidationFlag == "false" {
-										preValidation = false
-									}
-
-									if useFMPHPFlag == "" {
-										useFMPHPFlag = settings[5]
-									} else if strings.ToLower(useFMPHPFlag) == "false" && phpFlag == "true" {
-										useFMPHP = false
-										if settings[5] == "true" {
-											restartMessageFlag = true
-										}
 									} else {
-										// UseFMPHP is always true when enablePHP is false
-										useFMPHP = true
-										if settings[5] == "false" {
-											restartMessageFlag = true
+										printOptions = append(printOptions, "enablephp")
+										printOptions = append(printOptions, "enablexml")
+										printOptions = append(printOptions, "encoding")
+										printOptions = append(printOptions, "locale")
+										printOptions = append(printOptions, "prevalidation")
+										printOptions = append(printOptions, "usefmphp")
+									}
+
+									restartMessageFlag := false
+									if exitStatus == 0 && (len(phpFlag) > 0 || len(encoding) > 0 || len(locale) > 0 || len(preValidationFlag) > 0 || len(useFMPHPFlag) > 0) {
+										if phpFlag == "" {
+											phpFlag = settings[0]
+										} else if strings.ToLower(phpFlag) == "true" {
+											phpEnabled = "true"
+											if settings[0] == "false" {
+												restartMessageFlag = true
+											}
+										} else if strings.ToLower(phpFlag) == "false" {
+											phpEnabled = "false"
+											if settings[0] == "true" {
+												restartMessageFlag = true
+											}
+										}
+
+										if encoding == "" {
+											encoding = settings[2]
+										}
+
+										if locale == "" {
+											locale = settings[3]
+										}
+
+										if preValidationFlag == "" {
+											preValidationFlag = settings[4]
+										} else if preValidationFlag == "true" {
+											preValidation = true
+										} else if preValidationFlag == "false" {
+											preValidation = false
+										}
+
+										if useFMPHPFlag == "" {
+											useFMPHPFlag = settings[5]
+										} else if strings.ToLower(useFMPHPFlag) == "false" && phpFlag == "true" {
+											useFMPHP = false
+											if settings[5] == "true" {
+												restartMessageFlag = true
+											}
+										} else {
+											// UseFMPHP is always true when enablePHP is false
+											useFMPHP = true
+											if settings[5] == "false" {
+												restartMessageFlag = true
+											}
+										}
+
+										u.Path = path.Join(getAPIBasePath(baseURI), "php", "config")
+										exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
+											command:              "set",
+											enabled:              phpEnabled,
+											characterencoding:    encoding,
+											errormessagelanguage: locale,
+											dataprevalidation:    preValidation,
+											usefilemakerphp:      useFMPHP,
+										})
+									}
+
+									if exitStatus == 0 {
+										if xmlFlag == "true" || xmlFlag == "false" {
+											if xmlFlag == "" {
+												xmlFlag = settings[1]
+											} else if strings.ToLower(xmlFlag) == "true" {
+												xmlEnabled = "true"
+											} else if strings.ToLower(xmlFlag) == "false" {
+												xmlEnabled = "false"
+											}
+
+											u.Path = path.Join(getAPIBasePath(baseURI), "xml", "config")
+											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
+										}
+
+										_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+										if restartMessageFlag == true {
+											fmt.Fprintln(c.outStream, "Restart the FileMaker Server background processes to apply the change.")
 										}
 									}
-
-									u.Path = path.Join(getAPIBasePath(baseURI), "php", "config")
-									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-										command:              "set",
-										enabled:              phpEnabled,
-										characterencoding:    encoding,
-										errormessagelanguage: locale,
-										dataprevalidation:    preValidation,
-										usefilemakerphp:      useFMPHP,
-									})
 								}
-
-								if xmlFlag == "true" || xmlFlag == "false" {
-									if xmlFlag == "" {
-										xmlFlag = settings[1]
-									} else if strings.ToLower(xmlFlag) == "true" {
-										xmlEnabled = "true"
-									} else if strings.ToLower(xmlFlag) == "false" {
-										xmlEnabled = "false"
-									}
-
-									u.Path = path.Join(getAPIBasePath(baseURI), "xml", "config")
-									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
-								}
-
-								_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
-								if restartMessageFlag == true {
-									fmt.Println("Restart the FileMaker Server background processes to apply the change.")
-								}
+								logout(baseURI, token)
+							} else if exitStatus != 9 {
+								exitStatus = 10502
 							}
-							logout(baseURI, token)
-						} else if exitStatus != 9 {
-							exitStatus = 10502
 						}
 					} else {
 						exitStatus = 10001
@@ -2611,10 +2674,12 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 		return settings, 10502, err
 	}
 
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	var v interface{}
 	err = json.Unmarshal(body, &v)
 	if err != nil {
-		fmt.Println(err.Error())
+		return settings, 3, err
 	}
 
 	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
@@ -3138,6 +3203,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Empty result"
 	case 9:
 		description = "Access denied"
+	case 21:
+		description = "Not Supported"
 	case 212:
 		description = "Invalid user account and/or password; please try again"
 	case 214:
@@ -3504,7 +3571,7 @@ Description:
 
 Options:
     --key encryptpass
-		Specifies the encryption password for database(s) being opened.
+        Specifies the encryption password for database(s) being opened.
 
     --savekey
         Saves the encryption password provided with the --key option. The

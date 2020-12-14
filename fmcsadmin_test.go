@@ -58,6 +58,15 @@ func TestRun(t *testing.T) {
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
 
+	args = strings.Split("fmcsadmin get cwpconfig invalidparameter", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 10001, status)
+
+	args = strings.Split("fmcsadmin get cwpconfig invalidparameter", " ")
+	status = cli.Run(args)
+	expected := "Invalid configuration name: invalidparameter"
+	assert.Contains(t, outStream.String(), expected)
+
 	args = strings.Split("fmcsadmin get serverconfig invalidparameter", " ")
 	status = cli.Run(args)
 	assert.Equal(t, 10001, status)
@@ -94,8 +103,17 @@ func TestRun(t *testing.T) {
 	status = cli.Run(args)
 	assert.Equal(t, 10001, status)
 
-	args = strings.Split("fmcsadmin set cwpconfig enabledapi=true", " ")
-	expected := "Error: 10001 (Invalid parameter)"
+	args = strings.Split("fmcsadmin set cwpconfig enablephp", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 10001, status)
+
+	args = strings.Split("fmcsadmin set cwpconfig invalidparameter=true", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 10001, status)
+
+	args = strings.Split("fmcsadmin set cwpconfig invalidparameter=true", " ")
+	status = cli.Run(args)
+	expected = "Invalid configuration name: invalidparameter"
 	assert.Contains(t, outStream.String(), expected)
 
 	args = strings.Split("fmcsadmin set serverconfig", " ")
@@ -1034,6 +1052,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverconfig hostedfiles scriptsessions
 	 * fmcsadmin get serverconfig scriptsessions hostedfiles
 	 * fmcsadmin get cwpconfig
+	 * fmcsadmin get cwpconfig enablexml
 	 * fmcsadmin get cwpconfig enablephp usefmphp
 	 * fmcsadmin get cwpconfig usefmphp enablephp
 	 * fmcsadmin get serverprefs
@@ -1397,11 +1416,14 @@ func TestGetFlags(t *testing.T) {
 
 	/*
 	 * set
-	 * Usage: fmcsadmin SET BACKUPTIME [ID] HH:MM
-	 *        fmcsadmin SET CONFIG_TYPE [NAME1=VALUE1 NAME2=VALUE2 ...]
+	 * Usage: fmcsadmin SET CONFIG_TYPE [NAME1=VALUE1 NAME2=VALUE2 ...]
 	 *
 	 * fmcsadmin set serverconfig hostedfiles=125 scriptsessions=100
+	 * fmcsadmin set cwpconfig enablexml=true
 	 * fmcsadmin set cwpconfig enablephp=true usefmphp=true
+	 * fmcsadmin --fqdn example.jp set cwpconfig enablephp=true usefmphp=true
+	 * fmcsadmin --fqdn example.jp -u USERNAME set cwpconfig enablephp=true usefmphp=true
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
@@ -1512,6 +1534,7 @@ func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "Command is unknown", getErrorDescription(4))
 	assert.Equal(t, "Empty result", getErrorDescription(8))
 	assert.Equal(t, "Access denied", getErrorDescription(9))
+	assert.Equal(t, "Not Supported", getErrorDescription(21))
 	assert.Equal(t, "Invalid user account and/or password; please try again", getErrorDescription(212))
 	assert.Equal(t, "Unable to open the file", getErrorDescription(802))
 	assert.Equal(t, "Parameter missing", getErrorDescription(958))
