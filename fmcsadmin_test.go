@@ -269,18 +269,35 @@ func TestRunDisableCommand1(t *testing.T) {
 	assert.Contains(t, outStream.String(), expected)
 }
 
-/*
 func TestRunDisableCommand2(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
 
-	args := strings.Split("fmcsadmin -y disable schedule", " ")
+	args := strings.Split("fmcsadmin disable schedule", " ")
 	status := cli.Run(args)
-	assert.Equal(t, 104, status)
-	expected := "Error: 10600 (Schedule at specified index does not exist)"
+	assert.Equal(t, 0, status)
+	expected := "fmcsadmin: really disable schedule(s)? (y, n) "
 	assert.Contains(t, outStream.String(), expected)
 }
-*/
+
+func TestRunDisableCommand3(t *testing.T) {
+	running := true
+	url := "http://127.0.0.1:16001/fmi/admin/api/v2/user/auth"
+	_, err := http.Get(url)
+	if err != nil {
+		running = false
+	}
+
+	if running == true {
+		outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+		cli := &cli{outStream: outStream, errStream: errStream}
+		args := strings.Split("fmcsadmin -u USERNAME -p PASSWORD -y disable schedule", " ")
+		status := cli.Run(args)
+		assert.Equal(t, 10600, status)
+		expected := "Error: 10600 (Schedule at specified index does not exist)"
+		assert.Contains(t, outStream.String(), expected)
+	}
+}
 
 func TestRunDisconnectCommand1(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)

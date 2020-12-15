@@ -332,20 +332,20 @@ func (c *cli) Run(args []string) int {
 			}
 		case "disable":
 			if len(cmdArgs[1:]) > 0 {
-				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-				if token != "" && err == nil {
-					switch strings.ToLower(cmdArgs[1]) {
-					case "schedule":
-						res := ""
-						if yesFlag == true {
-							res = "y"
-						} else {
-							r := bufio.NewReader(os.Stdin)
-							fmt.Fprint(c.outStream, "fmcsadmin: really disable schedule(s)? (y, n) ")
-							input, _ := r.ReadString('\n')
-							res = strings.ToLower(strings.TrimSpace(input))
-						}
-						if res == "y" {
+				switch strings.ToLower(cmdArgs[1]) {
+				case "schedule":
+					res := ""
+					if yesFlag == true {
+						res = "y"
+					} else {
+						r := bufio.NewReader(os.Stdin)
+						fmt.Fprint(c.outStream, "fmcsadmin: really disable schedule(s)? (y, n) ")
+						input, _ := r.ReadString('\n')
+						res = strings.ToLower(strings.TrimSpace(input))
+					}
+					if res == "y" {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
 								sid, err := strconv.Atoi(cmdArgs[2])
@@ -363,13 +363,13 @@ func (c *cli) Run(args []string) int {
 							} else {
 								exitStatus = 10600
 							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
 						}
-					default:
-						exitStatus = -1
 					}
-					logout(baseURI, token)
-				} else if exitStatus != 9 {
-					exitStatus = 10502
+				default:
+					exitStatus = -1
 				}
 			} else {
 				exitStatus = outputInvalidCommandErrorMessage(c)
