@@ -626,46 +626,76 @@ func (c *cli) Run(args []string) int {
 						}
 					}
 				case "serverprefs":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
-						printOptions := []string{}
-						if len(cmdArgs[2:]) > 0 {
-							for i := 0; i < len(cmdArgs[2:]); i++ {
-								switch strings.ToLower(cmdArgs[2:][i]) {
-								case "maxguests":
-									printOptions = append(printOptions, "maxguests")
-								case "maxfiles":
-									printOptions = append(printOptions, "maxfiles")
-								case "cachesize":
-									printOptions = append(printOptions, "cachesize")
-								case "allowpsos":
-									printOptions = append(printOptions, "allowpsos")
-								case "requiresecuredb":
-									printOptions = append(printOptions, "requiresecuredb")
+					startupRestoration := false
+					if len(cmdArgs[2:]) > 0 {
+						for i := 0; i < len(cmdArgs[2:]); i++ {
+							if regexp.MustCompile(`(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+								rep := regexp.MustCompile(`(.*)`)
+								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
+								switch strings.ToLower(option) {
+								case "maxguests", "maxfiles", "cachesize", "allowpsos", "requiresecuredb":
 								case "startuprestorationenabled":
-									printOptions = append(printOptions, "startuprestorationenabled")
+									startupRestoration = true
 								default:
-									exitStatus = 10001
+									exitStatus = 3
 								}
+
 								if exitStatus != 0 {
 									break
 								}
 							}
-						} else {
-							printOptions = append(printOptions, "maxguests")
-							printOptions = append(printOptions, "maxfiles")
-							printOptions = append(printOptions, "cachesize")
-							printOptions = append(printOptions, "allowpsos")
-							printOptions = append(printOptions, "requiresecuredb")
-							printOptions = append(printOptions, "startuprestorationenabled")
 						}
-						if exitStatus == 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-							_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+					}
+
+					if exitStatus == 0 {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							printOptions := []string{}
+							if len(cmdArgs[2:]) > 0 {
+								for i := 0; i < len(cmdArgs[2:]); i++ {
+									switch strings.ToLower(cmdArgs[2:][i]) {
+									case "maxguests":
+										printOptions = append(printOptions, "maxguests")
+									case "maxfiles":
+										printOptions = append(printOptions, "maxfiles")
+									case "cachesize":
+										printOptions = append(printOptions, "cachesize")
+									case "allowpsos":
+										printOptions = append(printOptions, "allowpsos")
+									case "requiresecuredb":
+										printOptions = append(printOptions, "requiresecuredb")
+									case "startuprestorationenabled":
+										printOptions = append(printOptions, "startuprestorationenabled")
+									default:
+										exitStatus = 3
+									}
+									if exitStatus != 0 {
+										break
+									}
+								}
+							} else {
+								printOptions = append(printOptions, "maxguests")
+								printOptions = append(printOptions, "maxfiles")
+								printOptions = append(printOptions, "cachesize")
+								printOptions = append(printOptions, "allowpsos")
+								printOptions = append(printOptions, "requiresecuredb")
+								printOptions = append(printOptions, "startuprestorationenabled")
+							}
+
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							version := getServerVersion(u.String(), token)
+							if version >= 19.2 && startupRestoration == true {
+								exitStatus = 3
+							}
+
+							if exitStatus == 0 {
+								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
 						}
-						logout(baseURI, token)
-					} else if exitStatus != 9 {
-						exitStatus = 10502
 					}
 				default:
 					exitStatus = outputInvalidCommandErrorMessage(c)
@@ -1200,7 +1230,7 @@ func (c *cli) Run(args []string) int {
 
 									startupRestorationBuiltin := true
 									if settings[4] == -1 {
-										// for Claris FileMaker Server 19.1.2
+										// for Claris FileMaker Server 19.1.2 or later
 										startupRestorationBuiltin = false
 									}
 
@@ -1345,7 +1375,7 @@ func (c *cli) Run(args []string) int {
 
 									startupRestorationBuiltin := true
 									if settings[4] == -1 {
-										// for Claris FileMaker Server 19.1.2
+										// for Claris FileMaker Server 19.1.2 or later
 										startupRestorationBuiltin = false
 									}
 
@@ -2144,6 +2174,36 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 	return 0
 }
 
+func getServerVersion(url string, token string) float64 {
+	body, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return 0.0
+	}
+
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
+	var v interface{}
+	body2 := []byte(body)
+	err = json.Unmarshal(body2, &v)
+	if err != nil {
+		return 0.0
+	}
+
+	var versionString string
+	err = scan.ScanTree(v, "/response/ServerVersion", &versionString)
+	if err != nil {
+		return 0.0
+	}
+
+	version, err := strconv.ParseFloat(strings.Join(strings.Split(versionString, ".")[0:2], "."), 64)
+	if err != nil {
+		return 0.0
+	}
+
+	return version
+}
+
 func listSchedules(url string, token string, id int) int {
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
@@ -2545,7 +2605,7 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 	startupRestorationBuiltin := true
 	err = scan.ScanTree(v, "/response/startupRestorationEnabled", &startupRestorationEnabled)
 	if err != nil {
-		// for Claris FileMaker Server 19.1.2
+		// for Claris FileMaker Server 19.1.2 or later
 		startupRestorationBuiltin = false
 	}
 
@@ -2560,7 +2620,7 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 			settings = append(settings, 0)
 		}
 	} else {
-		// for Claris FileMaker Server 19.1.2
+		// for Claris FileMaker Server 19.1.2 or later
 		settings = append(settings, -1)
 	}
 
@@ -3076,7 +3136,7 @@ func sendRequest(method string, url string, token string, p params) (int, string
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == false {
-			// for Claris FileMaker Server 19.1.2
+			// for Claris FileMaker Server 19.1.2 or later
 			d := generalConfigInfo{
 				p.cachesize,
 				p.maxfiles,

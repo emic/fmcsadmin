@@ -7,7 +7,8 @@ Version: 1.2.0 (in development)
 - Add "DELETE" command to delete a schedule.
 - Modify behavior of "GET CWPCONFIG" command and "SET CWPCONFIG" command on Linux.
 - Modify behavior of outputting error messages for invalid parameters when using "GET CWPCONFIG", "GET SERVERCONFIG", "SET CWPCONFIG" and "SET SERVERCONFIG" command.
-- Change error code for unavailable commands when using "SET SERVERPREFS" command.
+- Modify behavior of outputting error messages for unavailable commands when using "GET SERVERPREFS" command and "SET SERVERPREFS" command.
+- Change error code for unavailable commands when using "GET SERVERPREFS" command and "SET SERVERPREFS" command.
 - Modify behavior of "DISABLE" command without "-y" or "--yes" option.
 - Add an error message for the FileMaker error code 21.
 - Built with Go 1.15.

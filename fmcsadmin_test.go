@@ -71,6 +71,10 @@ func TestRun(t *testing.T) {
 	status = cli.Run(args)
 	assert.Equal(t, 10001, status)
 
+	args = strings.Split("fmcsadmin get serverprefs invalidparameter", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 3, status)
+
 	args = strings.Split("fmcsadmin get unknown", " ")
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
