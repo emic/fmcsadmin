@@ -8,8 +8,10 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -105,6 +107,18 @@ type scheduleSettingInfo struct {
 	Enabled bool `json:"enabled"`
 }
 
+type creatingCsrInfo struct {
+	Subject  string `json:"subject"`
+	Password string `json:"password"`
+}
+
+type importingCertificateInfo struct {
+	Certificate              string `json:"certificate"`
+	PrivateKey               string `json:"privateKey"`
+	IntermediateCertificates string `json:"intermediateCertificates"`
+	Password                 string `json:"password"`
+}
+
 type params struct {
 	command                   string
 	key                       string
@@ -126,22 +140,30 @@ type params struct {
 	dataprevalidation         bool
 	usefilemakerphp           bool
 	saveKey                   bool
+	subject                   string
+	password                  string
+	certificate               string
+	privateKey                string
+	intermediateCertificates  string
 }
 
 type commandOptions struct {
-	helpFlag    bool
-	versionFlag bool
-	yesFlag     bool
-	statsFlag   bool
-	forceFlag   bool
-	saveKeyFlag bool
-	fqdn        string
-	username    string
-	password    string
-	key         string
-	message     string
-	clientID    int
-	graceTime   int
+	helpFlag       bool
+	versionFlag    bool
+	yesFlag        bool
+	statsFlag      bool
+	forceFlag      bool
+	saveKeyFlag    bool
+	fqdn           string
+	username       string
+	password       string
+	key            string
+	message        string
+	keyFile        string
+	keyFilePass    string
+	intermediateCA string
+	clientID       int
+	graceTime      int
 }
 
 func main() {
@@ -167,6 +189,10 @@ func (c *cli) Run(args []string) int {
 	key := ""
 	clientID := -1
 	message := ""
+	keyFile := ""
+	keyFilePassOption := false
+	keyFilePass := ""
+	intermediateCA := ""
 
 	commandOptions := commandOptions{}
 	commandOptions.helpFlag = false
@@ -180,6 +206,9 @@ func (c *cli) Run(args []string) int {
 	commandOptions.password = ""
 	commandOptions.key = ""
 	commandOptions.message = ""
+	commandOptions.keyFile = ""
+	commandOptions.keyFilePass = ""
+	commandOptions.intermediateCA = ""
 	commandOptions.clientID = -1
 	commandOptions.graceTime = 90
 
@@ -198,12 +227,15 @@ func (c *cli) Run(args []string) int {
 			// Allow option (ex.: "fmcsadmin get backuptime -1")
 			invalidOption = false
 		} else {
-			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey"}
+			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey", "--keyfile", "--KeyFile", "--keyfilepass", "--KeyFilePass", "--intermediateca", "--intermediateCA"}
 			for j := 0; j < len(allowedOptions); j++ {
 				if string([]rune(args[i])[:1]) == "-" {
 					invalidOption = true
 					for _, v := range allowedOptions {
 						if strings.ToLower(args[i]) == v {
+							if v == "--keyfilepass" {
+								keyFilePassOption = true
+							}
 							invalidOption = false
 						}
 					}
@@ -228,6 +260,9 @@ func (c *cli) Run(args []string) int {
 	password = cFlags.password
 	clientID = cFlags.clientID
 	message = cFlags.message
+	keyFile = cFlags.keyFile
+	keyFilePass = cFlags.keyFilePass
+	intermediateCA = cFlags.intermediateCA
 
 	fqdn = cFlags.fqdn
 	baseURI := getHostName(fqdn)
@@ -241,6 +276,288 @@ func (c *cli) Run(args []string) int {
 
 	if len(cmdArgs) > 0 {
 		switch strings.ToLower(cmdArgs[0]) {
+		case "certificate":
+			if len(cmdArgs[1:]) > 0 {
+				switch strings.ToLower(cmdArgs[1]) {
+				case "create":
+					running := true
+					u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+					_, err := http.Get(u.String())
+					if err != nil {
+						running = false
+					}
+
+					if running == true {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							version := getServerVersion(u.String(), token)
+							if version >= 19.2 {
+								if len(cmdArgs) < 3 {
+									fmt.Fprintln(c.outStream, "Certificate subject is not specified.")
+									exitStatus = 10001
+								}
+								if exitStatus == 0 {
+									if keyFilePassOption == false {
+										fmt.Fprintln(c.outStream, "Encryption password for the private key file is not specified.")
+										exitStatus = 10001
+									} else if keyFilePass == "" {
+										fmt.Fprintln(c.outStream, "Invalid parameter for option: --KeyFilePass")
+										exitStatus = 10001
+									} else {
+										u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "csr")
+										exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "certificate create", subject: base64.StdEncoding.EncodeToString([]byte(cmdArgs[2])), password: keyFilePass})
+										if exitStatus == 1712 {
+											fmt.Fprintln(c.outStream, "Private key file already exists, please remove it and run the command again.")
+											exitStatus = 20406
+										} else {
+											if err != nil {
+												fmt.Fprintln(c.outStream, err.Error())
+											}
+										}
+									}
+								}
+							} else {
+								exitStatus = outputInvalidCommandErrorMessage(c)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					} else {
+						exitStatus = 10502
+					}
+				case "import":
+					res := ""
+					if yesFlag == true {
+						res = "y"
+					} else {
+						r := bufio.NewReader(os.Stdin)
+						fmt.Fprint(c.outStream, "fmcsadmin: really import certificate? (y, n) (Warning: server needs to be restarted) ")
+						input, _ := r.ReadString('\n')
+						res = strings.ToLower(strings.TrimSpace(input))
+					}
+					if res == "y" {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							version := getServerVersion(u.String(), token)
+							if version >= 19.2 {
+								if len(cmdArgs[2:]) > 0 {
+									keyFileData := []byte("")
+
+									// reading certificate
+									var crt *x509.Certificate
+									certificateData, err := ioutil.ReadFile(cmdArgs[2])
+									if err != nil {
+										if os.IsPermission(err) {
+											exitStatus = 20402
+										} else {
+											exitStatus = 20405
+										}
+									} else {
+										block, _ := pem.Decode(certificateData)
+										if block == nil {
+											exitStatus = 20408
+										} else {
+											crt, err = x509.ParseCertificate(block.Bytes)
+											if err != nil {
+												exitStatus = 20408
+											}
+											if time.Now().UTC().After(crt.NotAfter) {
+												// if expired
+												exitStatus = 20630
+											}
+										}
+									}
+
+									switch exitStatus {
+									case 20402:
+										fmt.Fprintln(c.outStream, "Cannot read certificate file")
+									case 20405:
+										fmt.Fprintln(c.outStream, "Certificate "+filepath.Clean(cmdArgs[2])+" does not exist.")
+									case 20408:
+										fmt.Fprintln(c.outStream, "The certificate file is not valid.")
+									case 20630:
+										fmt.Fprintln(c.outStream, "The certificate has expired.")
+									}
+
+									// reading private key
+									if exitStatus == 0 {
+										if keyFile != "" {
+											keyFileData, err = ioutil.ReadFile(keyFile)
+											if err != nil {
+												if os.IsPermission(err) {
+													exitStatus = 20402
+												} else {
+													exitStatus = 20405
+												}
+											} else {
+												block, _ := pem.Decode(keyFileData)
+												if block == nil {
+													exitStatus = 20408
+												} else {
+													buf := block.Bytes
+													if x509.IsEncryptedPEMBlock(block) {
+														buf, err = x509.DecryptPEMBlock(block, []byte(keyFilePass))
+														if err != nil {
+															if err == x509.IncorrectPasswordError {
+																exitStatus = 20408
+															}
+														}
+													}
+
+													if exitStatus == 0 {
+														switch block.Type {
+														case "RSA PRIVATE KEY":
+															_, err = x509.ParsePKCS1PrivateKey(buf)
+															if err != nil {
+																exitStatus = 20408
+															}
+														case "PRIVATE KEY":
+															_, err := x509.ParsePKCS8PrivateKey(buf)
+															if err != nil {
+																exitStatus = 20408
+															}
+														case "EC PRIVATE KEY":
+															_, err := x509.ParseECPrivateKey(buf)
+															if err != nil {
+																exitStatus = 20408
+															}
+														default:
+															exitStatus = 20408
+														}
+													}
+												}
+											}
+
+											switch exitStatus {
+											case 20402, 20405:
+												fmt.Fprintln(c.outStream, "Cannot read private key file")
+											case 20408:
+												fmt.Fprintln(c.outStream, "Cannot decrypt the private key file with the password. Please make sure the key file and password are correct.")
+											}
+										} else {
+											fmt.Fprintln(c.outStream, "Private key file does not exist.")
+											exitStatus = 20405
+										}
+									}
+
+									// reading intermediate CA
+									intermediateCAData := []byte("")
+									intermediateCAExpired := false
+									if exitStatus == 0 {
+										if intermediateCA != "" {
+											intermediateCAData, err = ioutil.ReadFile(intermediateCA)
+											if err != nil {
+												if os.IsPermission(err) {
+													exitStatus = 20402
+												} else {
+													exitStatus = 20405
+												}
+											} else {
+												var block *pem.Block
+												rest := intermediateCAData
+												for {
+													block, rest = pem.Decode(rest)
+													if block == nil {
+														exitStatus = 20632
+														break
+													} else {
+														crt, err = x509.ParseCertificate(block.Bytes)
+														if err != nil {
+															exitStatus = 20632
+															break
+														}
+														if time.Now().UTC().After(crt.NotAfter) {
+															// if expired
+															intermediateCAExpired = true
+														}
+													}
+													if len(rest) == 0 {
+														break
+													}
+												}
+											}
+										}
+									}
+
+									switch exitStatus {
+									case 20402, 20405:
+										fmt.Fprintln(c.outStream, "Cannot read intermediate CA file")
+									case 20632:
+										fmt.Fprintln(c.outStream, "Failed to verify the intermediate CA certificate.")
+									}
+
+									// import SSL certficates
+									if exitStatus == 0 {
+										u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "import")
+										exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "certificate import", certificate: string(certificateData), privateKey: string(keyFileData), intermediateCertificates: string(intermediateCAData), password: keyFilePass})
+
+										if exitStatus == 1712 {
+											fmt.Fprintln(c.outStream, "Private key file already exists, please remove it and run the command again.")
+											exitStatus = 20406
+										} else if exitStatus == -1 && intermediateCAExpired == true {
+											fmt.Fprintln(c.outStream, "Failed to verify the intermediate CA certificate.")
+											exitStatus = 20630
+										} else {
+											if err != nil {
+												fmt.Fprintln(c.outStream, err.Error())
+											}
+										}
+										if exitStatus == 0 && err == nil {
+											fmt.Fprintln(c.outStream, "Restart the FileMaker Server background processes to apply the change.")
+										}
+									}
+								} else {
+									fmt.Fprintln(c.outStream, "Certificate file is not specified.")
+									exitStatus = 10001
+								}
+							} else {
+								exitStatus = outputInvalidCommandErrorMessage(c)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					}
+				case "delete":
+					res := ""
+					if yesFlag == true {
+						res = "y"
+					} else {
+						r := bufio.NewReader(os.Stdin)
+						fmt.Fprint(c.outStream, "fmcsadmin: really delete certificate? (y, n) (Warning: server needs to be restarted) ")
+						input, _ := r.ReadString('\n')
+						res = strings.ToLower(strings.TrimSpace(input))
+					}
+					if res == "y" {
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							version := getServerVersion(u.String(), token)
+							if version >= 19.2 {
+								u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "delete")
+								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
+								if err != nil {
+									fmt.Fprintln(c.outStream, err.Error())
+								}
+								if exitStatus == 0 && err == nil {
+									fmt.Fprintln(c.outStream, "Restart the FileMaker Server background processes to apply the change.")
+								}
+							} else {
+								exitStatus = outputInvalidCommandErrorMessage(c)
+							}
+							logout(baseURI, token)
+						} else if exitStatus != 9 {
+							exitStatus = 10502
+						}
+					}
+				default:
+					exitStatus = outputInvalidCommandErrorMessage(c)
+				}
+			} else {
+				exitStatus = outputInvalidCommandErrorMessage(c)
+			}
 		case "close":
 			res := ""
 			if yesFlag == true {
@@ -710,6 +1027,8 @@ func (c *cli) Run(args []string) int {
 					fmt.Fprint(c.outStream, commandListHelpTextTemplate)
 				case "options":
 					fmt.Fprint(c.outStream, optionListHelpTextTemplate)
+				case "certificate":
+					fmt.Fprint(c.outStream, certificateHelpTextTemplate)
 				case "close":
 					fmt.Fprint(c.outStream, closeHelpTextTemplate)
 				case "delete":
@@ -1593,6 +1912,9 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	password := ""
 	key := ""
 	message := ""
+	keyFile := ""
+	keyFilePass := ""
+	intermediateCA := ""
 	clientID := -1
 	graceTime := 90
 
@@ -1615,6 +1937,12 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	flags.StringVar(&key, "key", "", "Specify the database encryption password.")
 	flags.StringVar(&message, "m", "", "Specify a text message to send to clients.")
 	flags.StringVar(&message, "message", "", "Specify a text message to send to clients.")
+	flags.StringVar(&keyFile, "keyfile", "", "Specify private key file for certificate import.")
+	flags.StringVar(&keyFile, "KeyFile", "", "Specify private key file for certificate import.")
+	flags.StringVar(&keyFilePass, "keyfilepass", "", "Specify password needed to read KEYFILE.")
+	flags.StringVar(&keyFilePass, "KeyFilePass", "", "Specify password needed to read KEYFILE.")
+	flags.StringVar(&intermediateCA, "intermediateca", "", "Specify the file that contains the intermediate CA certificate(s) for certificate import.")
+	flags.StringVar(&intermediateCA, "intermediateCA", "", "Specify the file that contains the intermediate CA certificate(s) for certificate import.")
 	flags.IntVar(&clientID, "c", -1, "Specify a client number to send a message.")
 	flags.IntVar(&clientID, "client", -1, "Specify a client number to send a message.")
 	flags.BoolVar(&forceFlag, "f", false, "Force database to close or Database Server to stop, immediately disconnecting clients.")
@@ -1654,6 +1982,15 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	}
 	if cFlags.message == "" {
 		cFlags.message = message
+	}
+	if cFlags.keyFile == "" {
+		cFlags.keyFile = keyFile
+	}
+	if cFlags.keyFilePass == "" {
+		cFlags.keyFilePass = keyFilePass
+	}
+	if cFlags.intermediateCA == "" {
+		cFlags.intermediateCA = intermediateCA
 	}
 	if cFlags.clientID == -1 {
 		cFlags.clientID = clientID
@@ -1697,6 +2034,15 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 		}
 		if cFlags.message == "" {
 			cFlags.message = subCommandOptions.message
+		}
+		if cFlags.keyFile == "" {
+			cFlags.keyFile = subCommandOptions.keyFile
+		}
+		if cFlags.keyFilePass == "" {
+			cFlags.keyFilePass = subCommandOptions.keyFilePass
+		}
+		if cFlags.intermediateCA == "" {
+			cFlags.intermediateCA = subCommandOptions.intermediateCA
 		}
 		if cFlags.clientID == -1 {
 			cFlags.clientID = subCommandOptions.clientID
@@ -3176,6 +3522,20 @@ func sendRequest(method string, url string, token string, p params) (int, string
 			}
 			jsonStr, _ = json.Marshal(d)
 		}
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "certificate create" {
+		d := creatingCsrInfo{
+			p.subject,
+			p.password,
+		}
+		jsonStr, _ = json.Marshal(d)
+	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "certificate import" {
+		d := importingCertificateInfo{
+			p.certificate,
+			p.privateKey,
+			p.intermediateCertificates,
+			p.password,
+		}
+		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.status).IsValid() == true && (p.status == "RUNNING" || p.status == "STOPPED") {
 		d := statusInfo{
 			p.status,
@@ -3254,7 +3614,7 @@ func getErrorDescription(errorCode int) string {
 	description := ""
 	switch errorCode {
 	case -1:
-		description = "Internal error"
+		description = "Unknown error"
 	case 3:
 		description = "Unavailable command"
 	case 4:
@@ -3278,7 +3638,7 @@ func getErrorDescription(errorCode int) string {
 	case 1700:
 		description = "Resource doesn't exist"
 	case 1708:
-		description = "schedule_id: parameter value is invalid"
+		description = "Parameter value is invalid"
 	case 10001:
 		description = "Invalid parameter"
 	case 10006:
@@ -3313,6 +3673,18 @@ func getErrorDescription(errorCode int) string {
 		description = "Unable to create command"
 	case 11005:
 		description = "Disconnect Client invalid ID"
+	case 20402:
+		description = "File permission error"
+	case 20405:
+		description = "File not found or not accessible."
+	case 20406:
+		description = "File already exists"
+	case 20408:
+		description = "File read error"
+	case 20630:
+		description = "SSL certificate expired"
+	case 20632:
+		description = "SSL certificate verification error"
 	case 25004:
 		description = "Parameters are invalid"
 	case 25006:
@@ -3399,6 +3771,8 @@ License:
 
 var commandListHelpTextTemplate = `fmcsadmin commands are:
 
+    CERTIFICATE     Manage SSL certificates
+                    (for FileMaker Server 19.2.1 or later)
     CLOSE           Close databases
     DELETE          Delete a schedule
     DISABLE         Disable schedules
@@ -3463,12 +3837,52 @@ Options that apply to specific commands:
     -c NUM, --client NUM       Specify a client number to send a message.
     -f, --force                Force database to close or Database Server 
                                to stop, immediately disconnecting clients.
+    --intermediateCA IMCAFILE  Specify the file that contains the intermediate
+                               CA certificate(s) for certificate import.
     --key encryptpass          Specify the database encryption password.
+    --keyfile KEYFILE          Specify private key file for certificate import.
+    --keyfilepass kfpassword   Specify password needed to read KEYFILE.
     -m msg, --message msg      Specify a text message to send to clients. 
     -s, --stats                Return FILE or CLIENT stats.
     --savekey                  Save the database encryption password.
     -t sec, --gracetime sec    Specify time in seconds before client is forced
                                to disconnect.
+`
+
+var certificateHelpTextTemplate = `Usage: fmcsadmin CERTIFICATE [CERT_OP] [options] [NAME] [FILE]
+
+Description:
+    This command lets the administrator manage SSL certificates.
+
+    Valid certificate operations (CERT_OP) are:
+        CREATE     Generate an SSL private key and a certificate request
+                   to be sent to a certificate authority for signing.
+        IMPORT     Import an SSL certificate issued by a certificate authority.
+        DELETE     Remove the certificate request, custom certificate, and
+                   associated private key.
+
+    For the CREATE operation, a unique NAME for the database server is
+    needed.  This is in the form of server name or DNS name. For example
+      fmcsadmin certificate create /CN=svr.example.com/C=US --keyfilepass secret
+
+    For the IMPORT operation, the full path of the signed certificate FILE
+    from the certificate authority is required, e.g.
+      fmcsadmin certificate import /tmp/Signed.cer --keyfilepass secret
+
+Options:
+    --keyfile KEYFILE
+        Specifies the private key file which is associated with the signed
+        certificate file.
+
+    --keyfilepass secret
+        Specifies the encryption password used to encrypt and decrypt the
+        private key file.
+
+    --intermediateCA intermediateCAfile
+        Specifies the file that contains the intermediate CA certificate(s).
+        If the certificate was signed by an intermediate certificate authority,
+        use this option to IMPORT the intermediateCAFile from the vendor that
+        issued the certificate.
 `
 
 var closeHelpTextTemplate = `Usage: fmcsadmin CLOSE [FILE...] [PATH...] [options]

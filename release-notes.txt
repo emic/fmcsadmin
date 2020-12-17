@@ -5,14 +5,16 @@ This software is distributed under the MIT License, see LICENSE.txt and NOTICE.t
 Version: 1.2.0 (in development)
 - Support Claris FileMaker Server for Linux.
 - Add "DELETE" command to delete a schedule.
+- Add "CERTIFICATE" command to manage SSL certificates for Claris FileMaker Server 19.2.1.
 - Modify behavior of "GET CWPCONFIG" command and "SET CWPCONFIG" command on Linux.
 - Modify behavior of outputting error messages for invalid parameters when using "GET CWPCONFIG", "GET SERVERCONFIG", "SET CWPCONFIG" and "SET SERVERCONFIG" command.
 - Modify behavior of outputting error messages for unavailable commands when using "GET SERVERPREFS" command and "SET SERVERPREFS" command.
 - Change error code for unavailable commands when using "GET SERVERPREFS" command and "SET SERVERPREFS" command.
 - Modify behavior of "DISABLE" command without "-y" or "--yes" option.
-- Add an error message for the FileMaker error code 21.
+- Add error messages for the FileMaker error code 21, 20402, 20405, 20406, 20408, 20630 and 20632.
+- Update error messages for the FileMaker error code -1 and 1708.
 - Built with Go 1.15.
-- [BUG FIX] Fix compatibility with Claris FileMaker Server 19.1.2 when using "SET SERVERCONFIG" command and "SET SERVERPREFS" command.
+- [BUG FIX] Fix compatibility with Claris FileMaker Server 19.1.2 or later when using "SET SERVERCONFIG" command and "SET SERVERPREFS" command.
 
 Version: 1.1.0
 Date: June 17, 2020

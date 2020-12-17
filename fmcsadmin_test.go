@@ -30,6 +30,10 @@ func TestRun(t *testing.T) {
 	status = cli.Run(args)
 	assert.Equal(t, 248, status)
 
+	args = strings.Split("fmcsadmin certificate", " ")
+	status = cli.Run(args)
+	assert.Equal(t, 248, status)
+
 	args = strings.Split("fmcsadmin close -b", " ")
 	status = cli.Run(args)
 	assert.Equal(t, 249, status)
@@ -406,6 +410,17 @@ func TestRunRunCommand2(t *testing.T) {
 }
 */
 
+func TestRunShowCertificateCommandHelp(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin help certificate", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 0, status)
+	expected := "Usage: fmcsadmin CERTIFICATE [CERT_OP] [options] [NAME] [FILE]"
+	assert.Contains(t, outStream.String(), expected)
+}
+
 func TestRunShowCloseCommandHelp(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
@@ -681,6 +696,32 @@ func TestGetFlags(t *testing.T) {
 	flags.message = ""
 	flags.clientID = -1
 	flags.graceTime = 90
+
+	/*
+	 * certificate
+	 * Usage: fmcsadmin CERTIFICATE [CERT_OP] [options] [NAME] [FILE]
+	 *
+	 * fmcsadmin certificate create "/CN=fms.example.com/C=US" --keyfilepass secret
+	 * fmcsadmin -u USERNAME certificate create "/CN=fms.example.com/C=US" --keyfilepass secret
+	 * fmcsadmin -p PASSWORD certificate create "/CN=fms.example.com/C=US" --keyfilepass secret
+	 * fmcsadmin -u USERNAME -p PASSWORD certificate create "/CN=fms.example.com/C=US" --keyfilepass secret
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD certificate create "/CN=fms.example.com/C=US" --keyfilepass secret
+	 * fmcsadmin certificate import --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile CRTFILE
+	 * fmcsadmin certificate import --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile -y CRTFILE
+	 * fmcsadmin certificate import -u USERNAME --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile CRTFILE
+	 * fmcsadmin certificate import -p PASSWORD --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile CRTFILE
+	 * fmcsadmin certificate import -u USERNAME -p PASSWORD --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile CRTFILE
+	 * fmcsadmin certificate import --fqdn example.jp -u USERNAME -p PASSWORD --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile CRTFILE
+	 * fmcsadmin certificate import --fqdn example.jp -u USERNAME -p PASSWORD --keyfile KEYFILE --keyfilepass secret --intermediateCA intermediateCAfile -y CRTFILE
+	 * fmcsadmin certificate delete
+	 * fmcsadmin certificate delete -y
+	 * fmcsadmin -u USERNAME certificate delete
+	 * fmcsadmin -p PASSWORD certificate delete
+	 * fmcsadmin -u USERNAME -p PASSWORD certificate delete
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD certificate delete
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD certificate delete -y
+	 * etc.
+	 */
 
 	/*
 	 * close
@@ -1094,6 +1135,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin help
 	 * fmcsadmin help commands
 	 * fmcsadmin help options
+	 * fmcsadmin help certificate
 	 * fmcsadmin help close
 	 * fmcsadmin help delete
 	 * fmcsadmin help disable
@@ -1550,7 +1592,7 @@ func TestComparePath(t *testing.T) {
 
 func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "", getErrorDescription(0))
-	assert.Equal(t, "Internal error", getErrorDescription(-1))
+	assert.Equal(t, "Unknown error", getErrorDescription(-1))
 	assert.Equal(t, "Unavailable command", getErrorDescription(3))
 	assert.Equal(t, "Command is unknown", getErrorDescription(4))
 	assert.Equal(t, "Empty result", getErrorDescription(8))
@@ -1560,6 +1602,7 @@ func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "Unable to open the file", getErrorDescription(802))
 	assert.Equal(t, "Parameter missing", getErrorDescription(958))
 	assert.Equal(t, "Parameter is invalid", getErrorDescription(960))
+	assert.Equal(t, "Parameter value is invalid", getErrorDescription(1708))
 	assert.Equal(t, "Service already running", getErrorDescription(10006))
 	assert.Equal(t, "Schedule at specified index does not exist", getErrorDescription(10600))
 	assert.Equal(t, "Schedule is misconfigured; invalid taskType or run status", getErrorDescription(10601))
@@ -1573,6 +1616,12 @@ func TestGetErrorDescription(t *testing.T) {
 	assert.Equal(t, "Invalid command", getErrorDescription(11000))
 	assert.Equal(t, "Unable to create command", getErrorDescription(11002))
 	assert.Equal(t, "Disconnect Client invalid ID", getErrorDescription(11005))
+	assert.Equal(t, "File permission error", getErrorDescription(20402))
+	assert.Equal(t, "File not found or not accessible.", getErrorDescription(20405))
+	assert.Equal(t, "File already exists", getErrorDescription(20406))
+	assert.Equal(t, "File read error", getErrorDescription(20408))
+	assert.Equal(t, "SSL certificate expired", getErrorDescription(20630))
+	assert.Equal(t, "SSL certificate verification error", getErrorDescription(20632))
 	assert.Equal(t, "Parameters are invalid", getErrorDescription(25004))
 	assert.Equal(t, "Invalid session error", getErrorDescription(25006))
 }
