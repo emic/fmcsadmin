@@ -47,7 +47,7 @@ Note: Handling schedule ID 1 is not supported for Claris FileMaker Server.
 System Requirements
 -----
 - CentOS Linux 7 or later
-- macOS High Sierra 10.13.6 or later
+- macOS Mojave 10.14.6 or later
 - Windows 10
 
 Download
