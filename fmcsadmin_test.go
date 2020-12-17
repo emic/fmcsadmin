@@ -1164,30 +1164,40 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin list clients -s
 	 * fmcsadmin list files
 	 * fmcsadmin list files -s
+	 * fmcsadmin list plugins
+	 * fmcsadmin list plugins -s
 	 * fmcsadmin list schedules
 	 * fmcsadmin list schedules -s
 	 * fmcsadmin --fqdn example.jp list clients
 	 * fmcsadmin --fqdn example.jp list clients -s
 	 * fmcsadmin --fqdn example.jp list files
 	 * fmcsadmin --fqdn example.jp list files -s
+	 * fmcsadmin --fqdn example.jp list plugins
+	 * fmcsadmin --fqdn example.jp list plugins -s
 	 * fmcsadmin --fqdn example.jp list schedules
 	 * fmcsadmin --fqdn example.jp list schedules -s
 	 * fmcsadmin -u USERNAME list clients
 	 * fmcsadmin -u USERNAME list clients -s
 	 * fmcsadmin -u USERNAME list files
 	 * fmcsadmin -u USERNAME list files -s
+	 * fmcsadmin -u USERNAME list plugins
+	 * fmcsadmin -u USERNAME list plugins -s
 	 * fmcsadmin -u USERNAME list schedules
 	 * fmcsadmin -u USERNAME list schedules -s
 	 * fmcsadmin -p PASSWORD list clients
 	 * fmcsadmin -p PASSWORD list clients -s
 	 * fmcsadmin -p PASSWORD list files
 	 * fmcsadmin -p PASSWORD list files -s
+	 * fmcsadmin -p PASSWORD list plugins
+	 * fmcsadmin -p PASSWORD list plugins -s
 	 * fmcsadmin -p PASSWORD list schedules
 	 * fmcsadmin -p PASSWORD list schedules -s
 	 * fmcsadmin -u USERNAME -p PASSWORD list clients
 	 * fmcsadmin -u USERNAME -p PASSWORD list clients -s
 	 * fmcsadmin -u USERNAME -p PASSWORD list files
 	 * fmcsadmin -u USERNAME -p PASSWORD list files -s
+	 * fmcsadmin -u USERNAME -p PASSWORD list plugins
+	 * fmcsadmin -u USERNAME -p PASSWORD list plugins -s
 	 * fmcsadmin -u USERNAME -p PASSWORD list schedules
 	 * fmcsadmin -u USERNAME -p PASSWORD list schedules -s
 	 */
@@ -1273,6 +1283,49 @@ func TestGetFlags(t *testing.T) {
 
 	expected = []string{"list", "files"}
 	args = strings.Split("fmcsadmin list --stats files", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	// list plugins
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin list plugins", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, false, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin -s list plugins", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin --stats list plugins", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin list plugins -s", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin list plugins --stats", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin list -s plugins", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, true, resultFlags.statsFlag)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"list", "plugins"}
+	args = strings.Split("fmcsadmin list --stats plugins", " ")
 	cmdArgs, resultFlags, _ = getFlags(args, flags)
 	assert.Equal(t, true, resultFlags.statsFlag)
 	assert.Equal(t, expected, cmdArgs)

@@ -5,6 +5,7 @@ This software is distributed under the MIT License, see LICENSE.txt and NOTICE.t
 Version: 1.2.0 (in development)
 - Support Claris FileMaker Server for Linux.
 - Add "DELETE" command to delete a schedule.
+- Support "PLUGINS" type of "LIST" command to list Database Server calculation plug-ins for Claris FileMaker Server 19.2.1.
 - Add "CERTIFICATE" command to manage SSL certificates for Claris FileMaker Server 19.2.1.
 - Modify behavior of "GET CWPCONFIG" command and "SET CWPCONFIG" command on Linux.
 - Modify behavior of outputting error messages for invalid parameters when using "GET CWPCONFIG", "GET SERVERCONFIG", "SET CWPCONFIG" and "SET SERVERCONFIG" command.

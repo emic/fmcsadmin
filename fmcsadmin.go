@@ -1100,6 +1100,21 @@ func (c *cli) Run(args []string) int {
 					} else if exitStatus != 9 {
 						exitStatus = 10502
 					}
+				case "plugins":
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					if token != "" && err == nil {
+						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+						version := getServerVersion(u.String(), token)
+						if version >= 19.2 {
+							u.Path = path.Join(getAPIBasePath(baseURI), "plugins")
+							exitStatus = listPlugins(u.String(), token)
+						} else {
+							exitStatus = outputInvalidCommandErrorMessage(c)
+						}
+						logout(baseURI, token)
+					} else if exitStatus != 9 {
+						exitStatus = 10502
+					}
 				case "schedules":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 					if token != "" && err == nil {
@@ -2550,6 +2565,63 @@ func getServerVersion(url string, token string) float64 {
 	return version
 }
 
+func listPlugins(url string, token string) int {
+	body, err := callURL("GET", url, token, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		return -1
+	}
+
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
+	var v interface{}
+	body2 := []byte(body)
+	err = json.Unmarshal(body2, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	var count int
+	var c []string
+	var s1 string
+	var pluginName string
+	var fileName string
+	var enabled bool
+	var status string
+	var data [][]string
+
+	err = scan.ScanTree(v, "/response/plugins", &c)
+	count = len(c)
+
+	if count > 0 {
+		for i := 0; i < count; i++ {
+			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/id", &s1)
+			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/pluginName", &pluginName)
+			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/filename", &fileName)
+			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/enabled", &enabled)
+			status = "Disabled"
+			if enabled == true {
+				status = "Enabled"
+			}
+			data = append(data, []string{s1, pluginName, fileName, status})
+		}
+
+		if len(data) > 0 {
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetAutoWrapText(false)
+			table.SetAutoFormatHeaders(false)
+			for _, v := range data {
+				table.SetHeader([]string{"ID", "Name", "File", "Status"})
+				table.Append(v)
+			}
+			table.Render()
+		}
+	}
+
+	return 0
+}
+
 func listSchedules(url string, token string, id int) int {
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
@@ -3782,7 +3854,7 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
                     the start time of a backup schedule or schedules
                     (for FileMaker Server 18 or later)
     HELP            Get help pages
-    LIST            List clients, databases, or schedules
+    LIST            List clients, databases, plug-ins, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
     RESTART         Restart a server process
@@ -4025,6 +4097,8 @@ Description:
     Valid TYPEs:
         CLIENTS         Lists the connected clients.
         FILES           Lists the hosted databases.
+        PLUGINS         List Database Server calculation plug-ins.
+                        (for FileMaker Server 19.2.1 or later)
         SCHEDULES       List schedules.
 
 Options:

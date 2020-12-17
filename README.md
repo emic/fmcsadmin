@@ -9,8 +9,8 @@ Features
 - Disable schedules
 - Disconnect clients
 - Enable schedules
-- List clients, databases, or schedules
-- Manage SSL certificates (for Claris FileMaker Server 19.2 or later)
+- List clients, databases, plug-ins, or schedules
+- Manage SSL certificates (for Claris FileMaker Server 19.2.1 or later)
 - Open databases
 - Temporarily stop database access
 - Make paused databases available
