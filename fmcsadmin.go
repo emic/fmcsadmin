@@ -576,7 +576,7 @@ func (c *cli) Run(args []string) int {
 					if len(cmdArgs[1:]) > 0 {
 						args = cmdArgs[1:]
 					}
-					idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL")
+					idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL", false)
 					if len(idList) > 0 {
 						for i := 0; i < len(idList); i++ {
 							fmt.Fprintln(c.outStream, "File Closing: "+nameList[i])
@@ -1049,6 +1049,8 @@ func (c *cli) Run(args []string) int {
 					fmt.Fprint(c.outStream, openHelpTextTemplate)
 				case "pause":
 					fmt.Fprint(c.outStream, pauseHelpTextTemplate)
+				case "remove":
+					fmt.Fprint(c.outStream, removeHelpTextTemplate)
 				case "restart":
 					fmt.Fprint(c.outStream, restartHelpTextTemplate)
 				case "resume":
@@ -1138,7 +1140,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, hintList := getDatabases(u.String(), token, args, "CLOSED")
+				idList, nameList, hintList := getDatabases(u.String(), token, args, "CLOSED", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Opening: "+nameList[i])
@@ -1153,7 +1155,7 @@ func (c *cli) Run(args []string) int {
 							for value := 0; ; {
 								value++
 								u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-								openedID, _, _ = getDatabases(u.String(), token, []string{strconv.Itoa(idList[i])}, "NORMAL")
+								openedID, _, _ = getDatabases(u.String(), token, []string{strconv.Itoa(idList[i])}, "NORMAL", false)
 								if len(openedID) > 0 || value > 3 {
 									break
 								}
@@ -1182,7 +1184,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL")
+				idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Pausing: "+nameList[i])
@@ -1200,6 +1202,60 @@ func (c *cli) Run(args []string) int {
 				logout(baseURI, token)
 			} else if exitStatus != 9 {
 				exitStatus = 10502
+			}
+		case "remove":
+			res := ""
+			if yesFlag {
+				res = "y"
+			} else {
+				r := bufio.NewReader(os.Stdin)
+				fmt.Fprint(c.outStream, "fmcsadmin: really remove database(s)? (y, n) ")
+				input, _ := r.ReadString('\n')
+				res = strings.ToLower(strings.TrimSpace(input))
+			}
+			if res == "y" {
+				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+				if token != "" && err == nil {
+					u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+					version := getServerVersion(u.String(), token)
+					if version >= 19.3 {
+						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+						args = []string{""}
+						if len(cmdArgs[1:]) > 0 {
+							args = cmdArgs[1:]
+						}
+						idList, nameList, _ := getDatabases(u.String(), token, args, "CLOSED", true)
+						if len(idList) > 0 {
+							for i := 0; i < len(idList); i++ {
+								u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
+								if exitStatus == 0 && err == nil {
+									fmt.Fprintln(c.outStream, "File Removed: "+nameList[i])
+								}
+							}
+						} else {
+							_, nameList, _ = getDatabases(u.String(), token, args, "", true)
+							exitStatus = 10904
+							for i := 0; i < len(nameList); i++ {
+								if len(args) > 0 && comparePath(args[0], string(os.PathSeparator)+"Library"+string(os.PathSeparator)+"FileMaker Server"+string(os.PathSeparator)+"Data"+string(os.PathSeparator)+"Databases"+string(os.PathSeparator)) {
+									// File not found or not accessible
+									exitStatus = 20405
+									break
+								}
+								if len(args) > 0 && comparePath(args[0], filepath.Dir(nameList[i])+string(os.PathSeparator)) {
+									// Directory not empty
+									exitStatus = 20501
+									break
+								}
+							}
+						}
+					} else {
+						exitStatus = outputInvalidCommandErrorMessage(c)
+					}
+					logout(baseURI, token)
+				} else if exitStatus != 9 {
+					exitStatus = 10502
+				}
 			}
 		case "restart":
 			if len(cmdArgs[1:]) > 0 {
@@ -1246,7 +1302,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, _ := getDatabases(u.String(), token, args, "PAUSED")
+				idList, nameList, _ := getDatabases(u.String(), token, args, "PAUSED", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Resuming: "+nameList[i])
@@ -1839,7 +1895,7 @@ func (c *cli) Run(args []string) int {
 					if token != "" && err == nil {
 						if len(cmdArgs[2:]) > 0 {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "")
+							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "", false)
 							if len(idList) > 0 {
 								exitStatus = listFiles(c, u.String(), token, idList)
 							}
@@ -2832,7 +2888,7 @@ func sendMessage(url string, token string, message string) int {
 	return code
 }
 
-func getDatabases(url string, token string, arg []string, status string) ([]int, []string, []string) {
+func getDatabases(url string, token string, arg []string, status string, fullPath bool) ([]int, []string, []string) {
 	var fileName string
 	var folderName string
 	var idList []int
@@ -2851,6 +2907,13 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
+	// for debugging
+	/*
+		fmt.Println(url)
+		fmt.Println(bytes.NewBuffer([]byte(body)))
+	*/
+
 	var totalDbCount int
 	var fileStatus string
 	var s1 string
@@ -2858,7 +2921,7 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	var fileID string
 	var decryptHint string
 
-	err = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
+	_ = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
 	for i := 0; i < totalDbCount; i++ {
 		for j := 0; j < len(arg)+1; j++ {
 			if j == len(arg) && j > 0 {
@@ -2875,14 +2938,20 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 			}
 
 			if len(folderName) == 0 {
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s1)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s1)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s2)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
 				if regexp.MustCompile(`^[0-9]+$`).Match([]byte(arg[j])) {
 					// ID
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					if fileID == arg[j] && (status == fileStatus || status == "") {
-						nameList = append(nameList, s1)
+						if fullPath {
+							// for "remove" command
+							nameList = append(nameList, s2+s1)
+						} else {
+							nameList = append(nameList, s1)
+						}
 						id, _ = strconv.Atoi(fileID)
 						idList = append(idList, id)
 						hintList = append(hintList, decryptHint)
@@ -2890,25 +2959,48 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 				} else {
 					// name
 					if (fileName == "" || comparePath(fileName, s1)) && (status == fileStatus || status == "") {
-						nameList = append(nameList, s1)
-						err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+						if fullPath {
+							// for "remove" command
+							nameList = append(nameList, s2+s1)
+						} else {
+							nameList = append(nameList, s1)
+						}
+						_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 						id, _ = strconv.Atoi(fileID)
 						idList = append(idList, id)
 						hintList = append(hintList, decryptHint)
 					}
 				}
 			} else {
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s1)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s2)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s1)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s2)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
 				if (status == fileStatus || status == "") && (comparePath(s1, folderName) || comparePath(s1+s2, fileName)) {
-					nameList = append(nameList, s2)
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+					if fullPath {
+						// for "remove" command
+						nameList = append(nameList, s1+s2)
+					} else {
+						nameList = append(nameList, s2)
+					}
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					id, _ = strconv.Atoi(fileID)
 					idList = append(idList, id)
 					hintList = append(hintList, decryptHint)
 				}
+			}
+		}
+	}
+
+	if fullPath {
+		// for "remove" command
+		for i := 0; i < len(nameList); i++ {
+			if strings.Index(nameList[i], "filelinux:/") == 0 {
+				nameList[i] = strings.Replace(nameList[i], "filelinux:/", "/", 1)
+			} else if strings.Index(nameList[i], "filewin:/") == 0 {
+				nameList[i] = strings.Replace(strings.Replace(nameList[i], "filewin:/", "", 1), "/", "¥", -1)
+			} else if strings.Index(nameList[i], "filemac:/") == 0 {
+				nameList[i] = strings.Replace(nameList[i], "filemac:/", "/Volumes/", 1)
 			}
 		}
 	}
@@ -3279,7 +3371,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 
 	// close databases
 	u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL")
+	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL", false)
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
 			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
@@ -3295,7 +3387,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 		time.Sleep(1 * time.Second)
 		value++
 		u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-		openedID, _, _ = getDatabases(u.String(), token, []string{""}, "CLOSING")
+		openedID, _, _ = getDatabases(u.String(), token, []string{""}, "CLOSING", false)
 		if len(openedID) == 0 || value > 120 {
 			break
 		}
@@ -3472,8 +3564,21 @@ func comparePath(name1 string, name2 string) bool {
 		return true
 	}
 
-	if strings.Index(name1, string(os.PathSeparator)) > -1 || strings.Index(name2, string(os.PathSeparator)) > -1 {
+	if strings.Contains(name1, string(os.PathSeparator)) || strings.Contains(name2, string(os.PathSeparator)) {
 		for i := 0; i < len(pathPrefix); i++ {
+			if pathPrefix[i] == "filemac:" && (strings.Contains(name1, pathPrefix[i]) || strings.Contains(name2, pathPrefix[i])) {
+				name1 = strings.Replace(name1, "/Volumes", pathPrefix[i], 1)
+				name2 = strings.Replace(name2, "/Volumes", pathPrefix[i], 1)
+			}
+
+			if name1 == name2 {
+				return true
+			} else if name1 == name2+extName {
+				return true
+			} else if name1+extName == name2 {
+				return true
+			}
+
 			if pathPrefix[i]+name1 == name2 {
 				return true
 			} else if pathPrefix[i]+name1+extName == name2 {
@@ -3665,7 +3770,9 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 	client := &http.Client{Timeout: time.Duration(5) * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
+		// [WIP] for debugging
 		fmt.Println(err.Error())
+
 		return []byte(""), err
 	}
 	defer res.Body.Close()
@@ -3753,6 +3860,8 @@ func getErrorDescription(errorCode int) string {
 		description = "File already exists"
 	case 20408:
 		description = "File read error"
+	case 20501:
+		description = "Directory not empty"
 	case 20630:
 		description = "SSL certificate expired"
 	case 20632:
@@ -3857,6 +3966,8 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     LIST            List clients, databases, plug-ins, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
+    REMOVE          Move databases out of hosted folder
+                    (for FileMaker Server 19.3.1 or later)
     RESTART         Restart a server process
                     (for FileMaker Server 18 or later)
     RESUME          Make paused databases available
@@ -4139,6 +4250,18 @@ Description:
     until a RESUME command is performed.
 
 Options: 
+    No command specific options.
+`
+
+var removeHelpTextTemplate = `Usage: fmcsadmin REMOVE [FILE...] [PATH...]
+
+Description:
+    Moves a database that has been closed into a "Removed" folder so it will 
+    no longer be hosted. Each specified database (FILE) is removed, and all 
+    databases in each folder (PATH) are removed. If no FILE or PATH is 
+    specified, all closed databases in the hosting area are removed.
+
+Options:
     No command specific options.
 `
 

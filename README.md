@@ -9,22 +9,24 @@ Features
 - Disable schedules
 - Disconnect clients
 - Enable schedules
-- List clients, databases, plug-ins, or schedules
-- Manage SSL certificates (for Claris FileMaker Server 19.2.1 or later)
+- List clients, databases or schedules
 - Open databases
 - Temporarily stop database access
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for Claris FileMaker Server 18 or later)
-- Restart a server process (for Claris FileMaker Server 18 or later)
-- Stop a server process (for Claris FileMaker Server 18 or later)
-- Retrieve server or CWP configuration settings (for Claris FileMaker Server 18 or later)
-- Change server or CWP configuration settings (for Claris FileMaker Server 18 or later)
+- Start a server process (for Claris FileMaker Server)
+- Restart a server process (for Claris FileMaker Server)
+- Stop a server process (for Claris FileMaker Server)
+- Retrieve server or CWP configuration settings (for Claris FileMaker Server)
+- Change server or CWP configuration settings (for Claris FileMaker Server)
+- List plug-ins (for Claris FileMaker Server 19.2.1 or later)
+- Manage SSL certificates (for Claris FileMaker Server 19.2.1 or later)
+- Move databases out of hosted folder (for Claris FileMaker Server 19.3.1 or later)
 
 Supported Servers
 -----
-- Claris FileMaker Server 19
+- Claris FileMaker Server 19 (19.0, 19.1, 19.2, 19.3)
 - Claris FileMaker Server 18
 - Claris FileMaker Cloud for AWS 1.18
 
