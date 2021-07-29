@@ -1670,10 +1670,10 @@ func TestComparePath(t *testing.T) {
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 
 	if runtime.GOOS == "darwin" {
-		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
-		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+		assert.Equal(t, true, comparePath("filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	}
 
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
