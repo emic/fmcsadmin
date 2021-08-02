@@ -71,6 +71,10 @@ type securityConfigInfo struct {
 	RequireSecureDB bool `json:"requireSecureDB"`
 }
 
+type authenticatedStreamConfigInfo struct {
+	AuthenticatedStream int `json:"authenticatedStream"`
+}
+
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -135,6 +139,7 @@ type params struct {
 	startuprestorationenabled bool
 	startuprestorationbuiltin bool
 	requiresecuredb           string
+	authenticatedstream       int
 	characterencoding         string
 	errormessagelanguage      string
 	dataprevalidation         bool
@@ -1016,7 +1021,7 @@ func (c *cli) Run(args []string) int {
 
 								if version >= 19.3 && versionString != "19.3.1" {
 									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
-									exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+									_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
 								}
 							}
 
@@ -1703,6 +1708,7 @@ func (c *cli) Run(args []string) int {
 								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
+								case "authenticatedstream":
 								default:
 									exitStatus = 3
 								}
@@ -1740,8 +1746,9 @@ func (c *cli) Run(args []string) int {
 									startupRestorationEnabled = true
 								}
 								secureFilesOnlyFlag := results[5]
+								authenticatedStream, _ := strconv.Atoi(results[6])
 
-								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" {
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" {
 									if results[0] == "" {
 										cacheSize = settings[0]
 									} else {
@@ -1780,6 +1787,15 @@ func (c *cli) Run(args []string) int {
 										startupRestorationBuiltin = false
 									}
 
+									// for Claris FileMaker Server 19.3.2 or later
+									if results[6] == "" {
+										authenticatedStream = settings[6]
+									} else {
+										if authenticatedStream < 1 || authenticatedStream > 2 {
+											authenticatedStream = 10001
+										}
+									}
+
 									printOptions = []string{}
 									if len(cmdArgs[2:]) > 0 {
 										for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1799,6 +1815,8 @@ func (c *cli) Run(args []string) int {
 													printOptions = append(printOptions, "startuprestorationenabled")
 												case "requiresecuredb":
 													printOptions = append(printOptions, "requiresecuredb")
+												case "authenticatedstream":
+													printOptions = append(printOptions, "authenticatedstream")
 												default:
 													exitStatus = 3
 												}
@@ -1814,6 +1832,7 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "allowpsos")
 										printOptions = append(printOptions, "startuprestorationenabled")
 										printOptions = append(printOptions, "requiresecuredb")
+										printOptions = append(printOptions, "authenticatedstream")
 									}
 									if exitStatus == 0 {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
@@ -1839,6 +1858,26 @@ func (c *cli) Run(args []string) int {
 										if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
 											// check setting of startupRestorationEnabled
 											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+										}
+
+										// for Claris FileMaker Server 19.3.2 or later
+										if results[6] != "" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+											versionString, _ := getServerVersionString(u.String(), token)
+											version, _ := getServerVersionAsFloat(versionString)
+											if version >= 19.3 && versionString != "19.3.1" {
+												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
+
+												if exitStatus == 0 {
+													u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+													_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+												} else {
+													exitStatus = 10001
+												}
+											} else {
+												exitStatus = outputInvalidCommandErrorMessage(c)
+											}
 										}
 									}
 								}
@@ -2146,6 +2185,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	maxPSOS := ""
 	startupRestorationEnabled := ""
 	secureFilesOnlyFlag := ""
+	authenticatedStream := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2194,6 +2234,9 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
+		} else if regexp.MustCompile(`authenticatedstream=(\d+)`).Match([]byte(val)) == true {
+			rep := regexp.MustCompile(`authenticatedstream=(\d+)`)
+			authenticatedStream = rep.ReplaceAllString(val, "$1")
 		} else {
 			exitStatus = 10001
 		}
@@ -2205,6 +2248,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, maxPSOS)
 	results = append(results, startupRestorationEnabled)
 	results = append(results, secureFilesOnlyFlag)
+	results = append(results, authenticatedStream)
 
 	return results, exitStatus
 }
@@ -3248,14 +3292,14 @@ func getServerSecurityConfigurations(url string, token string, printOptions []st
 	return result
 }
 
-func getAuthenticatedStreamSetting(url string, token string, printOptions []string) (int, error) {
+func getAuthenticatedStreamSetting(url string, token string, printOptions []string) (int, int, error) {
 	var resultCode string
 	var result int
 	var authenticatedStream int
 
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
-		return 10502, err
+		return 0, 10502, err
 	}
 
 	var v interface{}
@@ -3266,7 +3310,7 @@ func getAuthenticatedStreamSetting(url string, token string, printOptions []stri
 
 	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
 	if err != nil {
-		return 3, err
+		return 0, 3, err
 	}
 	result, _ = strconv.Atoi(resultCode)
 	err = scan.ScanTree(v, "/response/authenticatedStream", &authenticatedStream)
@@ -3274,7 +3318,7 @@ func getAuthenticatedStreamSetting(url string, token string, printOptions []stri
 	// output
 	fmt.Println("AuthenticatedStream = " + strconv.Itoa(authenticatedStream) + " [default: 1, range: 1-2] ")
 
-	return result, err
+	return authenticatedStream, result, err
 }
 
 func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
@@ -3707,7 +3751,13 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "set" {
-		if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == true {
+		if strings.HasSuffix(url, "/server/config/authenticatedstream") {
+			// for Claris FileMaker Server 19.3.2 or later
+			d := authenticatedStreamConfigInfo{
+				p.authenticatedstream,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == true {
 			d := generalOldConfigInfo{
 				p.cachesize,
 				p.maxfiles,
