@@ -1,4 +1,4 @@
-fmcsadmin [![Build Status](https://travis-ci.org/emic/fmcsadmin.svg?branch=master)](https://travis-ci.org/emic/fmcsadmin)
+fmcsadmin [![Build Status](https://github.com/emic/fmcsadmin/actions/workflows/go.yml/badge.svg)](https://github.com/emic/fmcsadmin/actions/workflows/go.yml)
 =========
 fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Server and Claris FileMaker Cloud for AWS 1.18 via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
 
@@ -23,10 +23,14 @@ Features
 - List plug-ins (for Claris FileMaker Server 19.2.1 or later)
 - Manage SSL certificates (for Claris FileMaker Server 19.2.1 or later)
 - Move databases out of hosted folder (for Claris FileMaker Server 19.3.1 or later)
+- View and change the setting for sharing streaming URLs (for Claris FileMaker Server 19.3.2 or later)
 
 Supported Servers
 -----
 - Claris FileMaker Server 19 (19.0, 19.1, 19.2, 19.3)
+
+Deprecated Software
+-----
 - Claris FileMaker Server 18
 - Claris FileMaker Cloud for AWS 1.18
 

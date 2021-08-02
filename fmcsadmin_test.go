@@ -1120,6 +1120,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs
 	 * fmcsadmin get serverprefs maxguests maxfiles
 	 * fmcsadmin get serverprefs maxfiles maxguests
+	 * fmcsadmin get serverprefs AuthenticatedStream
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1623,6 +1624,13 @@ func TestGetHostName(t *testing.T) {
 func TestGetAPIBasePath(t *testing.T) {
 	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("http://127.0.0.1:16001"))
 	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("https://example.jp"))
+}
+
+func TestGetServerVersionAsFloat(t *testing.T) {
+	version, _ := getServerVersionAsFloat("19.3.1")
+	assert.Equal(t, 19.3, version)
+	version, _ = getServerVersionAsFloat("19.3.2")
+	assert.Equal(t, 19.3, version)
 }
 
 func TestComparePath(t *testing.T) {

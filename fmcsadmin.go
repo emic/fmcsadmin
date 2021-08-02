@@ -953,6 +953,7 @@ func (c *cli) Run(args []string) int {
 								case "maxguests", "maxfiles", "cachesize", "allowpsos", "requiresecuredb":
 								case "startuprestorationenabled":
 									startupRestoration = true
+								case "authenticatedstream":
 								default:
 									exitStatus = 3
 								}
@@ -983,6 +984,8 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "requiresecuredb")
 									case "startuprestorationenabled":
 										printOptions = append(printOptions, "startuprestorationenabled")
+									case "authenticatedstream":
+										printOptions = append(printOptions, "authenticatedstream")
 									default:
 										exitStatus = 3
 									}
@@ -997,18 +1000,26 @@ func (c *cli) Run(args []string) int {
 								printOptions = append(printOptions, "allowpsos")
 								printOptions = append(printOptions, "requiresecuredb")
 								printOptions = append(printOptions, "startuprestorationenabled")
+								printOptions = append(printOptions, "authenticatedstream")
 							}
 
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
-							version := getServerVersion(u.String(), token)
-							if version >= 19.2 && startupRestoration == true {
+							versionString, _ := getServerVersionString(u.String(), token)
+							version, _ := getServerVersionAsFloat(versionString)
+							if version >= 19.2 && startupRestoration {
 								exitStatus = 3
 							}
 
 							if exitStatus == 0 {
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+
+								if version >= 19.3 && versionString != "19.3.1" {
+									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+									exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+								}
 							}
+
 							logout(baseURI, token)
 						} else if exitStatus != 9 {
 							exitStatus = 10502
@@ -2592,9 +2603,23 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 }
 
 func getServerVersion(url string, token string) float64 {
-	body, err := callURL("GET", url, token, nil)
+	versionString, err := getServerVersionString(url, token)
 	if err != nil {
 		return 0.0
+	}
+
+	version, err := getServerVersionAsFloat(versionString)
+	if err != nil {
+		return 0.0
+	}
+
+	return version
+}
+
+func getServerVersionString(url string, token string) (string, error) {
+	body, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return "0.0.0", err
 	}
 
 	/* for debugging */
@@ -2604,21 +2629,25 @@ func getServerVersion(url string, token string) float64 {
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
-		return 0.0
+		return "0.0.0", err
 	}
 
 	var versionString string
 	err = scan.ScanTree(v, "/response/ServerVersion", &versionString)
 	if err != nil {
-		return 0.0
+		return "0.0.0", err
 	}
 
+	return versionString, err
+}
+
+func getServerVersionAsFloat(versionString string) (float64, error) {
 	version, err := strconv.ParseFloat(strings.Join(strings.Split(versionString, ".")[0:2], "."), 64)
 	if err != nil {
-		return 0.0
+		return 0.0, err
 	}
 
-	return version
+	return version, err
 }
 
 func listPlugins(url string, token string) int {
@@ -3219,6 +3248,35 @@ func getServerSecurityConfigurations(url string, token string, printOptions []st
 	return result
 }
 
+func getAuthenticatedStreamSetting(url string, token string, printOptions []string) (int, error) {
+	var resultCode string
+	var result int
+	var authenticatedStream int
+
+	body, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return 10502, err
+	}
+
+	var v interface{}
+	err = json.Unmarshal(body, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return 3, err
+	}
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/authenticatedStream", &authenticatedStream)
+
+	// output
+	fmt.Println("AuthenticatedStream = " + strconv.Itoa(authenticatedStream) + " [default: 1, range: 1-2] ")
+
+	return result, err
+}
+
 func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
 	var settings []string
 	var resultCode string
@@ -3770,8 +3828,8 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 	client := &http.Client{Timeout: time.Duration(5) * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		// [WIP] for debugging
-		fmt.Println(err.Error())
+		// for debugging
+		//fmt.Println(err.Error())
 
 		return []byte(""), err
 	}
