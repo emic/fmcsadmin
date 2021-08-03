@@ -3853,12 +3853,15 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		output := output{}
 		if json.Unmarshal(body, &output) == nil {
 			for i := 0; i < len(output.Messages); i++ {
-				if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+				if reflect.ValueOf(output.Messages[i].Code).IsValid() {
 					code, _ = strconv.Atoi(output.Messages[i].Code)
 					break
 				}
 			}
 			return code, output.Response.Status, nil
+		} else {
+			// In case of detecting a server-side error
+			return 3, "", err
 		}
 	}
 	if err != nil {
