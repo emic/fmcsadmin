@@ -973,6 +973,10 @@ func (c *cli) Run(args []string) int {
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							versionString, _ := getServerVersionString(u.String(), token)
+							version, _ := getServerVersionAsFloat(versionString)
+
 							printOptions := []string{}
 							if len(cmdArgs[2:]) > 0 {
 								for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1005,12 +1009,11 @@ func (c *cli) Run(args []string) int {
 								printOptions = append(printOptions, "allowpsos")
 								printOptions = append(printOptions, "requiresecuredb")
 								printOptions = append(printOptions, "startuprestorationenabled")
-								printOptions = append(printOptions, "authenticatedstream")
+								if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+									printOptions = append(printOptions, "authenticatedstream")
+								}
 							}
 
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
-							versionString, _ := getServerVersionString(u.String(), token)
-							version, _ := getServerVersionAsFloat(versionString)
 							if version >= 19.2 && startupRestoration {
 								exitStatus = 3
 							}
@@ -1019,9 +1022,15 @@ func (c *cli) Run(args []string) int {
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 
-								if version >= 19.3 && versionString != "19.3.1" {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
-									_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+								for _, option := range printOptions {
+									if option == "authenticatedstream" {
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+											_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+										} else {
+											exitStatus = 3
+										}
+									}
 								}
 							}
 
@@ -1865,7 +1874,7 @@ func (c *cli) Run(args []string) int {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 											versionString, _ := getServerVersionString(u.String(), token)
 											version, _ := getServerVersionAsFloat(versionString)
-											if version >= 19.3 && versionString != "19.3.1" {
+											if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
 
@@ -1876,7 +1885,7 @@ func (c *cli) Run(args []string) int {
 													exitStatus = 10001
 												}
 											} else {
-												exitStatus = outputInvalidCommandErrorMessage(c)
+												exitStatus = 3
 											}
 										}
 									}
