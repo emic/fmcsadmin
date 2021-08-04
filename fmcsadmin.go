@@ -1136,7 +1136,14 @@ func (c *cli) Run(args []string) int {
 							u.Path = path.Join(getAPIBasePath(baseURI), "plugins")
 							exitStatus = listPlugins(u.String(), token)
 						} else {
-							exitStatus = outputInvalidCommandErrorMessage(c)
+							var running string
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+							exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+							if running == "STOPPED" {
+								exitStatus = 10502
+							} else {
+								exitStatus = outputInvalidCommandErrorMessage(c)
+							}
 						}
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
@@ -2446,6 +2453,8 @@ func logout(baseURI string, token string) {
 }
 
 func listClients(url string, token string, id int) int {
+	var resultCode string
+
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2457,6 +2466,16 @@ func listClients(url string, token string, id int) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return -1
+	}
+	result, _ := strconv.Atoi(resultCode)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	mode := "NORMAL"
@@ -2557,6 +2576,8 @@ func listClients(url string, token string, id int) int {
 }
 
 func listFiles(c *cli, url string, token string, idList []int) int {
+	var resultCode string
+
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2572,6 +2593,16 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return -1
+	}
+	result, _ := strconv.Atoi(resultCode)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	mode := "NORMAL"
@@ -2761,6 +2792,8 @@ func listPlugins(url string, token string) int {
 }
 
 func listSchedules(url string, token string, id int) int {
+	var resultCode string
+
 	body, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2775,6 +2808,16 @@ func listSchedules(url string, token string, id int) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return -1
+	}
+	result, _ := strconv.Atoi(resultCode)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	var count int
