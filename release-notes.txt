@@ -11,7 +11,7 @@ Version: 1.3.0 (in development)
 - Return the FileMaker error code 10502 when using "LIST" command and fmserverd is stopping.
 - Improve error handling in case of detecting server-side error.
 - Suppress outputting error messages for debugging.
-- Add an error message for the FileMaker error code 20501.
+- Add error messages for the FileMaker error code 1713, 20501.
 - Built with Go 1.16.
 
 Version: 1.2.0

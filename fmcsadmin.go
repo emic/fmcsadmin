@@ -4008,6 +4008,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Resource doesn't exist"
 	case 1708:
 		description = "Parameter value is invalid"
+	case 1713:
+		description = "The API request is not supported for this operating system"
 	case 10001:
 		description = "Invalid parameter"
 	case 10006:
