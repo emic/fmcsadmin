@@ -2469,9 +2469,19 @@ func logout(baseURI string, token string) {
 	sendRequest("DELETE", u.String(), token, params{})
 }
 
-func listClients(url string, token string, id int) int {
+func getResultCode(v interface{}) int {
 	var resultCode string
 
+	err := scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return -1
+	}
+	code, _ := strconv.Atoi(resultCode)
+
+	return code
+}
+
+func listClients(url string, token string, id int) int {
 	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2485,11 +2495,7 @@ func listClients(url string, token string, id int) int {
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
-	if err != nil {
-		return -1
-	}
-	result, _ := strconv.Atoi(resultCode)
+	result := getResultCode(v)
 	if result == 1701 {
 		// when fmserverd is stopping
 		return 10502
@@ -2593,30 +2599,23 @@ func listClients(url string, token string, id int) int {
 }
 
 func listFiles(c *cli, url string, token string, idList []int) int {
-	var resultCode string
-
 	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
 	}
 
-	var v interface{}
-
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
 
+	var v interface{}
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
-	if err != nil {
-		return -1
-	}
-	result, _ := strconv.Atoi(resultCode)
+	result := getResultCode(v)
 	if result == 1701 {
 		// when fmserverd is stopping
 		return 10502
@@ -2768,6 +2767,12 @@ func listPlugins(url string, token string) int {
 		fmt.Println(err.Error())
 	}
 
+	result := getResultCode(v)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
+	}
+
 	var count int
 	var c []string
 	var s1 string
@@ -2809,8 +2814,6 @@ func listPlugins(url string, token string) int {
 }
 
 func listSchedules(url string, token string, id int) int {
-	var resultCode string
-
 	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2827,11 +2830,7 @@ func listSchedules(url string, token string, id int) int {
 		fmt.Println(err.Error())
 	}
 
-	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
-	if err != nil {
-		return -1
-	}
-	result, _ := strconv.Atoi(resultCode)
+	result := getResultCode(v)
 	if result == 1701 {
 		// when fmserverd is stopping
 		return 10502
