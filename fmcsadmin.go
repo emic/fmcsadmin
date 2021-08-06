@@ -1616,8 +1616,9 @@ func (c *cli) Run(args []string) int {
 								maxPSOS, _ := strconv.Atoi(results[3])
 								startupRestorationEnabled := results[4]
 								secureFilesOnlyFlag := results[5]
+								authenticatedStream := results[6]
 
-								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" {
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || authenticatedStream != "" {
 									if results[0] == "" {
 										cacheSize = settings[0]
 									} else {
@@ -1673,6 +1674,8 @@ func (c *cli) Run(args []string) int {
 													printOptions = append(printOptions, "scriptsessions")
 												case "securefilesonly":
 													printOptions = append(printOptions, "securefilesonly")
+												case "authenticatedstream":
+													printOptions = append(printOptions, "authenticatedstream")
 												default:
 													exitStatus = 10001
 												}
@@ -1687,6 +1690,7 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "proconnections")
 										printOptions = append(printOptions, "scriptsessions")
 										printOptions = append(printOptions, "securefilesonly")
+										printOptions = append(printOptions, "authenticatedstream")
 									}
 									if exitStatus == 0 {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" {
@@ -1701,13 +1705,15 @@ func (c *cli) Run(args []string) int {
 											})
 										}
 
-										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+										if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
 											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 										}
 
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-										_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+										if exitStatus == 0 {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+										}
 									}
 								}
 							}
@@ -1744,6 +1750,10 @@ func (c *cli) Run(args []string) int {
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							versionString, _ := getServerVersionString(u.String(), token)
+							version, _ := getServerVersionAsFloat(versionString)
+
 							var settings []int
 							var settingResults []int
 							printOptions := []string{}
@@ -1805,10 +1815,13 @@ func (c *cli) Run(args []string) int {
 
 									// for Claris FileMaker Server 19.3.2 or later
 									if results[6] == "" {
-										authenticatedStream = settings[6]
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+											authenticatedStream, _, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+										}
 									} else {
 										if authenticatedStream < 1 || authenticatedStream > 2 {
-											authenticatedStream = 10001
+											exitStatus = 10001
 										}
 									}
 
@@ -1848,7 +1861,9 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "allowpsos")
 										printOptions = append(printOptions, "startuprestorationenabled")
 										printOptions = append(printOptions, "requiresecuredb")
-										printOptions = append(printOptions, "authenticatedstream")
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											printOptions = append(printOptions, "authenticatedstream")
+										}
 									}
 									if exitStatus == 0 {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
@@ -1864,20 +1879,22 @@ func (c *cli) Run(args []string) int {
 											})
 										}
 
-										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+										if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
 											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 										}
 
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-										settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
-										if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
-											// check setting of startupRestorationEnabled
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+										if exitStatus == 0 {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+											if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
+												// check setting of startupRestorationEnabled
+												fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+											}
 										}
 
 										// for Claris FileMaker Server 19.3.2 or later
-										if results[6] != "" {
+										if exitStatus == 0 && results[6] != "" {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 											versionString, _ := getServerVersionString(u.String(), token)
 											version, _ := getServerVersionAsFloat(versionString)
@@ -2409,7 +2426,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 	u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
 
 	output := output{}
-	body, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
+	body, _, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
 
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -2455,7 +2472,7 @@ func logout(baseURI string, token string) {
 func listClients(url string, token string, id int) int {
 	var resultCode string
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2578,7 +2595,7 @@ func listClients(url string, token string, id int) int {
 func listFiles(c *cli, url string, token string, idList []int) int {
 	var resultCode string
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2701,7 +2718,7 @@ func getServerVersion(url string, token string) float64 {
 }
 
 func getServerVersionString(url string, token string) (string, error) {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		return "0.0.0", err
 	}
@@ -2735,7 +2752,7 @@ func getServerVersionAsFloat(versionString string) (float64, error) {
 }
 
 func listPlugins(url string, token string) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2794,7 +2811,7 @@ func listPlugins(url string, token string) int {
 func listSchedules(url string, token string, id int) int {
 	var resultCode string
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2929,7 +2946,7 @@ func listSchedules(url string, token string, id int) int {
 }
 
 func getScheduleName(url string, token string, id int) string {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		//fmt.Println(err.Error())
 		return ""
@@ -2991,7 +3008,7 @@ func sendMessage(url string, token string, message string) int {
 		message,
 	}
 	jsonStr, _ := json.Marshal(d)
-	body, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
+	body, _, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
 
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -3021,7 +3038,7 @@ func getDatabases(url string, token string, arg []string, status string, fullPat
 	var hintList []string
 	var id int
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return idList, nameList, hintList
@@ -3139,7 +3156,7 @@ func getClients(url string, token string, arg []string, status string) []int {
 	var idList []int
 	var id int
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return idList
@@ -3216,7 +3233,7 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 	var maxPSOS int
 	var startupRestorationEnabled bool
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, 10502
@@ -3306,7 +3323,7 @@ func getServerSecurityConfigurations(url string, token string, printOptions []st
 	var requireSecureDB bool
 	var requireSecureDBStr string
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 10502
@@ -3349,7 +3366,7 @@ func getAuthenticatedStreamSetting(url string, token string, printOptions []stri
 	var result int
 	var authenticatedStream int
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		return 0, 10502, err
 	}
@@ -3368,7 +3385,13 @@ func getAuthenticatedStreamSetting(url string, token string, printOptions []stri
 	err = scan.ScanTree(v, "/response/authenticatedStream", &authenticatedStream)
 
 	// output
-	fmt.Println("AuthenticatedStream = " + strconv.Itoa(authenticatedStream) + " [default: 1, range: 1-2] ")
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "authenticatedstream" {
+				fmt.Println("AuthenticatedStream = " + strconv.Itoa(authenticatedStream) + " [default: 1, range: 1-2] ")
+			}
+		}
+	}
 
 	return authenticatedStream, result, err
 }
@@ -3392,7 +3415,7 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	u, _ := url.Parse(baseURI)
 	u.Path = path.Join(basePath, "php", "config")
 
-	body, err := callURL("GET", u.String(), token, nil)
+	body, _, err := callURL("GET", u.String(), token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, 10502, err
@@ -3435,7 +3458,7 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	// get XML Technology Configuration
 	u.Path = path.Join(basePath, "xml", "config")
 
-	body, err = callURL("GET", u.String(), token, nil)
+	body, _, err = callURL("GET", u.String(), token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, -1, err
@@ -3573,7 +3596,7 @@ func waitStoppingServer(u *url.URL, baseURI string, token string) (int, error) {
 }
 
 func getBackupTime(url string, token string, id int) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -3882,15 +3905,23 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		jsonStr = []byte("")
 	}
 
-	body, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
+	body, statusCode, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
+	if err != nil {
+		return -1, "", err
+	}
 
 	// for debugging
 	/*
 		fmt.Println(method)
 		fmt.Println(url)
+		fmt.Println(statusCode)
 		fmt.Println(string(jsonStr))
 		fmt.Println(bytes.NewBuffer([]byte(body)))
 	*/
+
+	if statusCode >= 400 {
+		return 10001, "", err
+	}
 
 	if body != nil {
 		output := output{}
@@ -3907,18 +3938,15 @@ func sendRequest(method string, url string, token string, p params) (int, string
 			return 3, "", err
 		}
 	}
-	if err != nil {
-		return -1, "", err
-	}
 
 	return 0, "", nil
 }
 
-func callURL(method string, url string, token string, request io.Reader) ([]byte, error) {
+func callURL(method string, url string, token string, request io.Reader) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, request)
 	if err != nil {
 		fmt.Println(err.Error())
-		return []byte(""), err
+		return []byte(""), 500, err
 	}
 
 	if request == nil {
@@ -3936,7 +3964,7 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 		// for debugging
 		//fmt.Println(err.Error())
 
-		return []byte(""), err
+		return []byte(""), res.StatusCode, err
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
@@ -3946,10 +3974,10 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return []byte(""), err
+		return []byte(""), res.StatusCode, err
 	}
 
-	return body, err
+	return body, res.StatusCode, err
 }
 
 func getErrorDescription(errorCode int) string {
