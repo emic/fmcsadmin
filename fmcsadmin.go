@@ -2251,18 +2251,18 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 			} else {
 				startupRestorationEnabled = "false"
 			}
-		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "requiresecuredb=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "requiresecuredb=0" && str[i] != "requiresecuredb=+0" && str[i] != "requiresecuredb=-0") {
+			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "requiresecuredb=0" && val != "requiresecuredb=+0" && val != "requiresecuredb=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
-		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "securefilesonly=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "securefilesonly=0" && str[i] != "securefilesonly=+0" && str[i] != "securefilesonly=-0") {
+			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "securefilesonly=0" && val != "securefilesonly=+0" && val != "securefilesonly=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
@@ -2297,18 +2297,19 @@ func parseWebConfigurationSettings(c *cli, str []string) ([]string, int) {
 	useFMPHPFlag := ""
 
 	for i := 0; i < len(str); i++ {
-		if regexp.MustCompile(`enablephp=(.*)`).Match([]byte(str[i])) == true {
+		val := strings.ToLower(str[i])
+		if regexp.MustCompile(`enablephp=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "enablephp=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "enablephp=true" || (regexp.MustCompile(`enablephp=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "enablephp=0" && str[i] != "enablephp=+0" && str[i] != "enablephp=-0") {
+			} else if strings.ToLower(str[i]) == "enablephp=true" || (regexp.MustCompile(`enablephp=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "enablephp=0" && val != "enablephp=+0" && val != "enablephp=-0") {
 				phpFlag = "true"
 			} else {
 				phpFlag = "false"
 			}
-		} else if regexp.MustCompile(`enablexml=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`enablexml=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "enablexml=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "enablexml=true" || (regexp.MustCompile(`enablexml=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "enablexml=0" && str[i] != "enablexml=+0" && str[i] != "enablexml=-0") {
+			} else if strings.ToLower(str[i]) == "enablexml=true" || (regexp.MustCompile(`enablexml=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "enablexml=0" && val != "enablexml=+0" && val != "enablexml=-0") {
 				xmlFlag = "true"
 			} else {
 				xmlFlag = "false"
@@ -2329,18 +2330,18 @@ func parseWebConfigurationSettings(c *cli, str []string) ([]string, int) {
 			locale = "ja"
 		} else if strings.ToLower(str[i]) == "locale=sv" {
 			locale = "sv"
-		} else if regexp.MustCompile(`prevalidation=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`prevalidation=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "prevalidation=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "prevalidation=true" || (regexp.MustCompile(`prevalidation=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "prevalidation=0" && str[i] != "prevalidation=+0" && str[i] != "prevalidation=-0") {
+			} else if strings.ToLower(str[i]) == "prevalidation=true" || (regexp.MustCompile(`prevalidation=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "prevalidation=0" && val != "prevalidation=+0" && val != "prevalidation=-0") {
 				preValidationFlag = "true"
 			} else {
 				preValidationFlag = "false"
 			}
-		} else if regexp.MustCompile(`usefmphp=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`usefmphp=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "usefmphp=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "usefmphp=true" || (regexp.MustCompile(`usefmphp=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "usefmphp=0" && str[i] != "usefmphp=+0" && str[i] != "usefmphp=-0") {
+			} else if strings.ToLower(str[i]) == "usefmphp=true" || (regexp.MustCompile(`usefmphp=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "usefmphp=0" && val != "usefmphp=+0" && val != "usefmphp=-0") {
 				useFMPHPFlag = "true"
 			} else {
 				useFMPHPFlag = "false"

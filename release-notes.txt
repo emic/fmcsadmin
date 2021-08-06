@@ -13,6 +13,7 @@ Version: 1.3.0 (in development)
 - Suppress outputting error messages for debugging.
 - Add error messages for the FileMaker error code 1713, 20501.
 - Built with Go 1.16.
+- [BUG FIX] Detect upper case when using "SET SERVERCONFIG SecureFilesOnly", "SET SERVERPREFS RequireSecureDB" and "SET CWPCONFIG" command.
 
 Version: 1.2.0
 Date: February 17, 2021
