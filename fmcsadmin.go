@@ -71,6 +71,10 @@ type securityConfigInfo struct {
 	RequireSecureDB bool `json:"requireSecureDB"`
 }
 
+type authenticatedStreamConfigInfo struct {
+	AuthenticatedStream int `json:"authenticatedStream"`
+}
+
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -135,6 +139,7 @@ type params struct {
 	startuprestorationenabled bool
 	startuprestorationbuiltin bool
 	requiresecuredb           string
+	authenticatedstream       int
 	characterencoding         string
 	errormessagelanguage      string
 	dataprevalidation         bool
@@ -576,7 +581,7 @@ func (c *cli) Run(args []string) int {
 					if len(cmdArgs[1:]) > 0 {
 						args = cmdArgs[1:]
 					}
-					idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL")
+					idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL", false)
 					if len(idList) > 0 {
 						for i := 0; i < len(idList); i++ {
 							fmt.Fprintln(c.outStream, "File Closing: "+nameList[i])
@@ -953,6 +958,7 @@ func (c *cli) Run(args []string) int {
 								case "maxguests", "maxfiles", "cachesize", "allowpsos", "requiresecuredb":
 								case "startuprestorationenabled":
 									startupRestoration = true
+								case "authenticatedstream":
 								default:
 									exitStatus = 3
 								}
@@ -967,6 +973,10 @@ func (c *cli) Run(args []string) int {
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							versionString, _ := getServerVersionString(u.String(), token)
+							version, _ := getServerVersionAsFloat(versionString)
+
 							printOptions := []string{}
 							if len(cmdArgs[2:]) > 0 {
 								for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -983,6 +993,8 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "requiresecuredb")
 									case "startuprestorationenabled":
 										printOptions = append(printOptions, "startuprestorationenabled")
+									case "authenticatedstream":
+										printOptions = append(printOptions, "authenticatedstream")
 									default:
 										exitStatus = 3
 									}
@@ -997,18 +1009,31 @@ func (c *cli) Run(args []string) int {
 								printOptions = append(printOptions, "allowpsos")
 								printOptions = append(printOptions, "requiresecuredb")
 								printOptions = append(printOptions, "startuprestorationenabled")
+								if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+									printOptions = append(printOptions, "authenticatedstream")
+								}
 							}
 
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
-							version := getServerVersion(u.String(), token)
-							if version >= 19.2 && startupRestoration == true {
+							if version >= 19.2 && startupRestoration {
 								exitStatus = 3
 							}
 
 							if exitStatus == 0 {
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+
+								for _, option := range printOptions {
+									if option == "authenticatedstream" {
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+											_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+										} else {
+											exitStatus = 3
+										}
+									}
+								}
 							}
+
 							logout(baseURI, token)
 						} else if exitStatus != 9 {
 							exitStatus = 10502
@@ -1049,6 +1074,8 @@ func (c *cli) Run(args []string) int {
 					fmt.Fprint(c.outStream, openHelpTextTemplate)
 				case "pause":
 					fmt.Fprint(c.outStream, pauseHelpTextTemplate)
+				case "remove":
+					fmt.Fprint(c.outStream, removeHelpTextTemplate)
 				case "restart":
 					fmt.Fprint(c.outStream, restartHelpTextTemplate)
 				case "resume":
@@ -1109,7 +1136,14 @@ func (c *cli) Run(args []string) int {
 							u.Path = path.Join(getAPIBasePath(baseURI), "plugins")
 							exitStatus = listPlugins(u.String(), token)
 						} else {
-							exitStatus = outputInvalidCommandErrorMessage(c)
+							var running string
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+							exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+							if running == "STOPPED" {
+								exitStatus = 10502
+							} else {
+								exitStatus = outputInvalidCommandErrorMessage(c)
+							}
 						}
 						logout(baseURI, token)
 					} else if exitStatus != 9 {
@@ -1138,7 +1172,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, hintList := getDatabases(u.String(), token, args, "CLOSED")
+				idList, nameList, hintList := getDatabases(u.String(), token, args, "CLOSED", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Opening: "+nameList[i])
@@ -1153,7 +1187,7 @@ func (c *cli) Run(args []string) int {
 							for value := 0; ; {
 								value++
 								u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-								openedID, _, _ = getDatabases(u.String(), token, []string{strconv.Itoa(idList[i])}, "NORMAL")
+								openedID, _, _ = getDatabases(u.String(), token, []string{strconv.Itoa(idList[i])}, "NORMAL", false)
 								if len(openedID) > 0 || value > 3 {
 									break
 								}
@@ -1182,7 +1216,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL")
+				idList, nameList, _ := getDatabases(u.String(), token, args, "NORMAL", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Pausing: "+nameList[i])
@@ -1200,6 +1234,60 @@ func (c *cli) Run(args []string) int {
 				logout(baseURI, token)
 			} else if exitStatus != 9 {
 				exitStatus = 10502
+			}
+		case "remove":
+			res := ""
+			if yesFlag {
+				res = "y"
+			} else {
+				r := bufio.NewReader(os.Stdin)
+				fmt.Fprint(c.outStream, "fmcsadmin: really remove database(s)? (y, n) ")
+				input, _ := r.ReadString('\n')
+				res = strings.ToLower(strings.TrimSpace(input))
+			}
+			if res == "y" {
+				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+				if token != "" && err == nil {
+					u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+					version := getServerVersion(u.String(), token)
+					if version >= 19.3 {
+						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+						args = []string{""}
+						if len(cmdArgs[1:]) > 0 {
+							args = cmdArgs[1:]
+						}
+						idList, nameList, _ := getDatabases(u.String(), token, args, "CLOSED", true)
+						if len(idList) > 0 {
+							for i := 0; i < len(idList); i++ {
+								u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
+								if exitStatus == 0 && err == nil {
+									fmt.Fprintln(c.outStream, "File Removed: "+nameList[i])
+								}
+							}
+						} else {
+							_, nameList, _ = getDatabases(u.String(), token, args, "", true)
+							exitStatus = 10904
+							for i := 0; i < len(nameList); i++ {
+								if len(args) > 0 && comparePath(args[0], string(os.PathSeparator)+"Library"+string(os.PathSeparator)+"FileMaker Server"+string(os.PathSeparator)+"Data"+string(os.PathSeparator)+"Databases"+string(os.PathSeparator)) {
+									// File not found or not accessible
+									exitStatus = 20405
+									break
+								}
+								if len(args) > 0 && comparePath(args[0], filepath.Dir(nameList[i])+string(os.PathSeparator)) {
+									// Directory not empty
+									exitStatus = 20501
+									break
+								}
+							}
+						}
+					} else {
+						exitStatus = outputInvalidCommandErrorMessage(c)
+					}
+					logout(baseURI, token)
+				} else if exitStatus != 9 {
+					exitStatus = 10502
+				}
 			}
 		case "restart":
 			if len(cmdArgs[1:]) > 0 {
@@ -1246,7 +1334,7 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
 				}
-				idList, nameList, _ := getDatabases(u.String(), token, args, "PAUSED")
+				idList, nameList, _ := getDatabases(u.String(), token, args, "PAUSED", false)
 				if len(idList) > 0 {
 					for i := 0; i < len(idList); i++ {
 						fmt.Fprintln(c.outStream, "File Resuming: "+nameList[i])
@@ -1528,8 +1616,9 @@ func (c *cli) Run(args []string) int {
 								maxPSOS, _ := strconv.Atoi(results[3])
 								startupRestorationEnabled := results[4]
 								secureFilesOnlyFlag := results[5]
+								authenticatedStream := results[6]
 
-								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" {
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || authenticatedStream != "" {
 									if results[0] == "" {
 										cacheSize = settings[0]
 									} else {
@@ -1585,6 +1674,8 @@ func (c *cli) Run(args []string) int {
 													printOptions = append(printOptions, "scriptsessions")
 												case "securefilesonly":
 													printOptions = append(printOptions, "securefilesonly")
+												case "authenticatedstream":
+													printOptions = append(printOptions, "authenticatedstream")
 												default:
 													exitStatus = 10001
 												}
@@ -1599,6 +1690,7 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "proconnections")
 										printOptions = append(printOptions, "scriptsessions")
 										printOptions = append(printOptions, "securefilesonly")
+										printOptions = append(printOptions, "authenticatedstream")
 									}
 									if exitStatus == 0 {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" {
@@ -1613,13 +1705,15 @@ func (c *cli) Run(args []string) int {
 											})
 										}
 
-										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+										if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
 											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 										}
 
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-										_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+										if exitStatus == 0 {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+										}
 									}
 								}
 							}
@@ -1636,6 +1730,7 @@ func (c *cli) Run(args []string) int {
 								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
+								case "authenticatedstream":
 								default:
 									exitStatus = 3
 								}
@@ -1655,6 +1750,10 @@ func (c *cli) Run(args []string) int {
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
 						if token != "" && err == nil {
+							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							versionString, _ := getServerVersionString(u.String(), token)
+							version, _ := getServerVersionAsFloat(versionString)
+
 							var settings []int
 							var settingResults []int
 							printOptions := []string{}
@@ -1673,8 +1772,9 @@ func (c *cli) Run(args []string) int {
 									startupRestorationEnabled = true
 								}
 								secureFilesOnlyFlag := results[5]
+								authenticatedStream, _ := strconv.Atoi(results[6])
 
-								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" {
+								if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" {
 									if results[0] == "" {
 										cacheSize = settings[0]
 									} else {
@@ -1713,6 +1813,18 @@ func (c *cli) Run(args []string) int {
 										startupRestorationBuiltin = false
 									}
 
+									// for Claris FileMaker Server 19.3.2 or later
+									if results[6] == "" {
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+											authenticatedStream, _, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+										}
+									} else {
+										if authenticatedStream < 1 || authenticatedStream > 2 {
+											exitStatus = 10001
+										}
+									}
+
 									printOptions = []string{}
 									if len(cmdArgs[2:]) > 0 {
 										for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1732,6 +1844,8 @@ func (c *cli) Run(args []string) int {
 													printOptions = append(printOptions, "startuprestorationenabled")
 												case "requiresecuredb":
 													printOptions = append(printOptions, "requiresecuredb")
+												case "authenticatedstream":
+													printOptions = append(printOptions, "authenticatedstream")
 												default:
 													exitStatus = 3
 												}
@@ -1747,6 +1861,9 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "allowpsos")
 										printOptions = append(printOptions, "startuprestorationenabled")
 										printOptions = append(printOptions, "requiresecuredb")
+										if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+											printOptions = append(printOptions, "authenticatedstream")
+										}
 									}
 									if exitStatus == 0 {
 										if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
@@ -1762,16 +1879,38 @@ func (c *cli) Run(args []string) int {
 											})
 										}
 
-										if secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false" {
+										if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
 											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
 											exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 										}
 
-										u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
-										settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
-										if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
-											// check setting of startupRestorationEnabled
-											fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+										if exitStatus == 0 {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+											settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+											if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
+												// check setting of startupRestorationEnabled
+												fmt.Println("Restart the FileMaker Server background processes to apply the change.")
+											}
+										}
+
+										// for Claris FileMaker Server 19.3.2 or later
+										if exitStatus == 0 && results[6] != "" {
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+											versionString, _ := getServerVersionString(u.String(), token)
+											version, _ := getServerVersionAsFloat(versionString)
+											if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
+
+												if exitStatus == 0 {
+													u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+													_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
+												} else {
+													exitStatus = 10001
+												}
+											} else {
+												exitStatus = 3
+											}
 										}
 									}
 								}
@@ -1839,7 +1978,7 @@ func (c *cli) Run(args []string) int {
 					if token != "" && err == nil {
 						if len(cmdArgs[2:]) > 0 {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "")
+							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "", false)
 							if len(idList) > 0 {
 								exitStatus = listFiles(c, u.String(), token, idList)
 							}
@@ -2079,6 +2218,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	maxPSOS := ""
 	startupRestorationEnabled := ""
 	secureFilesOnlyFlag := ""
+	authenticatedStream := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2111,22 +2251,25 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 			} else {
 				startupRestorationEnabled = "false"
 			}
-		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "requiresecuredb=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "requiresecuredb=0" && str[i] != "requiresecuredb=+0" && str[i] != "requiresecuredb=-0") {
+			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "requiresecuredb=0" && val != "requiresecuredb=+0" && val != "requiresecuredb=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
-		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "securefilesonly=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "securefilesonly=0" && str[i] != "securefilesonly=+0" && str[i] != "securefilesonly=-0") {
+			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "securefilesonly=0" && val != "securefilesonly=+0" && val != "securefilesonly=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
+		} else if regexp.MustCompile(`authenticatedstream=(\d+)`).Match([]byte(val)) == true {
+			rep := regexp.MustCompile(`authenticatedstream=(\d+)`)
+			authenticatedStream = rep.ReplaceAllString(val, "$1")
 		} else {
 			exitStatus = 10001
 		}
@@ -2138,6 +2281,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, maxPSOS)
 	results = append(results, startupRestorationEnabled)
 	results = append(results, secureFilesOnlyFlag)
+	results = append(results, authenticatedStream)
 
 	return results, exitStatus
 }
@@ -2153,18 +2297,19 @@ func parseWebConfigurationSettings(c *cli, str []string) ([]string, int) {
 	useFMPHPFlag := ""
 
 	for i := 0; i < len(str); i++ {
-		if regexp.MustCompile(`enablephp=(.*)`).Match([]byte(str[i])) == true {
+		val := strings.ToLower(str[i])
+		if regexp.MustCompile(`enablephp=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "enablephp=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "enablephp=true" || (regexp.MustCompile(`enablephp=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "enablephp=0" && str[i] != "enablephp=+0" && str[i] != "enablephp=-0") {
+			} else if strings.ToLower(str[i]) == "enablephp=true" || (regexp.MustCompile(`enablephp=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "enablephp=0" && val != "enablephp=+0" && val != "enablephp=-0") {
 				phpFlag = "true"
 			} else {
 				phpFlag = "false"
 			}
-		} else if regexp.MustCompile(`enablexml=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`enablexml=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "enablexml=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "enablexml=true" || (regexp.MustCompile(`enablexml=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "enablexml=0" && str[i] != "enablexml=+0" && str[i] != "enablexml=-0") {
+			} else if strings.ToLower(str[i]) == "enablexml=true" || (regexp.MustCompile(`enablexml=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "enablexml=0" && val != "enablexml=+0" && val != "enablexml=-0") {
 				xmlFlag = "true"
 			} else {
 				xmlFlag = "false"
@@ -2185,18 +2330,18 @@ func parseWebConfigurationSettings(c *cli, str []string) ([]string, int) {
 			locale = "ja"
 		} else if strings.ToLower(str[i]) == "locale=sv" {
 			locale = "sv"
-		} else if regexp.MustCompile(`prevalidation=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`prevalidation=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "prevalidation=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "prevalidation=true" || (regexp.MustCompile(`prevalidation=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "prevalidation=0" && str[i] != "prevalidation=+0" && str[i] != "prevalidation=-0") {
+			} else if strings.ToLower(str[i]) == "prevalidation=true" || (regexp.MustCompile(`prevalidation=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "prevalidation=0" && val != "prevalidation=+0" && val != "prevalidation=-0") {
 				preValidationFlag = "true"
 			} else {
 				preValidationFlag = "false"
 			}
-		} else if regexp.MustCompile(`usefmphp=(.*)`).Match([]byte(str[i])) == true {
+		} else if regexp.MustCompile(`usefmphp=(.*)`).Match([]byte(val)) == true {
 			if strings.ToLower(str[i]) == "usefmphp=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "usefmphp=true" || (regexp.MustCompile(`usefmphp=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "usefmphp=0" && str[i] != "usefmphp=+0" && str[i] != "usefmphp=-0") {
+			} else if strings.ToLower(str[i]) == "usefmphp=true" || (regexp.MustCompile(`usefmphp=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "usefmphp=0" && val != "usefmphp=+0" && val != "usefmphp=-0") {
 				useFMPHPFlag = "true"
 			} else {
 				useFMPHPFlag = "false"
@@ -2282,7 +2427,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 	u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
 
 	output := output{}
-	body, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
+	body, _, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
 
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -2325,8 +2470,20 @@ func logout(baseURI string, token string) {
 	sendRequest("DELETE", u.String(), token, params{})
 }
 
+func getResultCode(v interface{}) int {
+	var resultCode string
+
+	err := scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return -1
+	}
+	code, _ := strconv.Atoi(resultCode)
+
+	return code
+}
+
 func listClients(url string, token string, id int) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2337,6 +2494,12 @@ func listClients(url string, token string, id int) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	result := getResultCode(v)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	mode := "NORMAL"
@@ -2437,21 +2600,26 @@ func listClients(url string, token string, id int) int {
 }
 
 func listFiles(c *cli, url string, token string, idList []int) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
 	}
 
-	var v interface{}
-
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
 
+	var v interface{}
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	result := getResultCode(v)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	mode := "NORMAL"
@@ -2536,9 +2704,23 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 }
 
 func getServerVersion(url string, token string) float64 {
-	body, err := callURL("GET", url, token, nil)
+	versionString, err := getServerVersionString(url, token)
 	if err != nil {
 		return 0.0
+	}
+
+	version, err := getServerVersionAsFloat(versionString)
+	if err != nil {
+		return 0.0
+	}
+
+	return version
+}
+
+func getServerVersionString(url string, token string) (string, error) {
+	body, _, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return "0.0.0", err
 	}
 
 	/* for debugging */
@@ -2548,25 +2730,29 @@ func getServerVersion(url string, token string) float64 {
 	body2 := []byte(body)
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
-		return 0.0
+		return "0.0.0", err
 	}
 
 	var versionString string
 	err = scan.ScanTree(v, "/response/ServerVersion", &versionString)
 	if err != nil {
-		return 0.0
+		return "0.0.0", err
 	}
 
+	return versionString, err
+}
+
+func getServerVersionAsFloat(versionString string) (float64, error) {
 	version, err := strconv.ParseFloat(strings.Join(strings.Split(versionString, ".")[0:2], "."), 64)
 	if err != nil {
-		return 0.0
+		return 0.0, err
 	}
 
-	return version
+	return version, err
 }
 
 func listPlugins(url string, token string) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2580,6 +2766,12 @@ func listPlugins(url string, token string) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	result := getResultCode(v)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	var count int
@@ -2623,7 +2815,7 @@ func listPlugins(url string, token string) int {
 }
 
 func listSchedules(url string, token string, id int) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -2637,6 +2829,12 @@ func listSchedules(url string, token string, id int) int {
 	err = json.Unmarshal(body2, &v)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	result := getResultCode(v)
+	if result == 1701 {
+		// when fmserverd is stopping
+		return 10502
 	}
 
 	var count int
@@ -2748,7 +2946,7 @@ func listSchedules(url string, token string, id int) int {
 }
 
 func getScheduleName(url string, token string, id int) string {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		//fmt.Println(err.Error())
 		return ""
@@ -2810,7 +3008,7 @@ func sendMessage(url string, token string, message string) int {
 		message,
 	}
 	jsonStr, _ := json.Marshal(d)
-	body, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
+	body, _, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
 
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -2832,7 +3030,7 @@ func sendMessage(url string, token string, message string) int {
 	return code
 }
 
-func getDatabases(url string, token string, arg []string, status string) ([]int, []string, []string) {
+func getDatabases(url string, token string, arg []string, status string, fullPath bool) ([]int, []string, []string) {
 	var fileName string
 	var folderName string
 	var idList []int
@@ -2840,7 +3038,7 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	var hintList []string
 	var id int
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return idList, nameList, hintList
@@ -2851,6 +3049,13 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
+	// for debugging
+	/*
+		fmt.Println(url)
+		fmt.Println(bytes.NewBuffer([]byte(body)))
+	*/
+
 	var totalDbCount int
 	var fileStatus string
 	var s1 string
@@ -2858,7 +3063,7 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 	var fileID string
 	var decryptHint string
 
-	err = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
+	_ = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
 	for i := 0; i < totalDbCount; i++ {
 		for j := 0; j < len(arg)+1; j++ {
 			if j == len(arg) && j > 0 {
@@ -2875,14 +3080,20 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 			}
 
 			if len(folderName) == 0 {
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s1)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s1)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s2)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
 				if regexp.MustCompile(`^[0-9]+$`).Match([]byte(arg[j])) {
 					// ID
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					if fileID == arg[j] && (status == fileStatus || status == "") {
-						nameList = append(nameList, s1)
+						if fullPath {
+							// for "remove" command
+							nameList = append(nameList, s2+s1)
+						} else {
+							nameList = append(nameList, s1)
+						}
 						id, _ = strconv.Atoi(fileID)
 						idList = append(idList, id)
 						hintList = append(hintList, decryptHint)
@@ -2890,25 +3101,48 @@ func getDatabases(url string, token string, arg []string, status string) ([]int,
 				} else {
 					// name
 					if (fileName == "" || comparePath(fileName, s1)) && (status == fileStatus || status == "") {
-						nameList = append(nameList, s1)
-						err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+						if fullPath {
+							// for "remove" command
+							nameList = append(nameList, s2+s1)
+						} else {
+							nameList = append(nameList, s1)
+						}
+						_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 						id, _ = strconv.Atoi(fileID)
 						idList = append(idList, id)
 						hintList = append(hintList, decryptHint)
 					}
 				}
 			} else {
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s1)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s2)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &fileStatus)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s1)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s2)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/decryptHint", &decryptHint)
 				if (status == fileStatus || status == "") && (comparePath(s1, folderName) || comparePath(s1+s2, fileName)) {
-					nameList = append(nameList, s2)
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
+					if fullPath {
+						// for "remove" command
+						nameList = append(nameList, s1+s2)
+					} else {
+						nameList = append(nameList, s2)
+					}
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &fileID)
 					id, _ = strconv.Atoi(fileID)
 					idList = append(idList, id)
 					hintList = append(hintList, decryptHint)
 				}
+			}
+		}
+	}
+
+	if fullPath {
+		// for "remove" command
+		for i := 0; i < len(nameList); i++ {
+			if strings.Index(nameList[i], "filelinux:/") == 0 {
+				nameList[i] = strings.Replace(nameList[i], "filelinux:/", "/", 1)
+			} else if strings.Index(nameList[i], "filewin:/") == 0 {
+				nameList[i] = strings.Replace(strings.Replace(nameList[i], "filewin:/", "", 1), "/", "¥", -1)
+			} else if strings.Index(nameList[i], "filemac:/") == 0 {
+				nameList[i] = strings.Replace(nameList[i], "filemac:/", "/Volumes/", 1)
 			}
 		}
 	}
@@ -2922,7 +3156,7 @@ func getClients(url string, token string, arg []string, status string) []int {
 	var idList []int
 	var id int
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return idList
@@ -2999,7 +3233,7 @@ func getServerGeneralConfigurations(url string, token string, printOptions []str
 	var maxPSOS int
 	var startupRestorationEnabled bool
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, 10502
@@ -3089,7 +3323,7 @@ func getServerSecurityConfigurations(url string, token string, printOptions []st
 	var requireSecureDB bool
 	var requireSecureDBStr string
 
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 10502
@@ -3127,6 +3361,41 @@ func getServerSecurityConfigurations(url string, token string, printOptions []st
 	return result
 }
 
+func getAuthenticatedStreamSetting(url string, token string, printOptions []string) (int, int, error) {
+	var resultCode string
+	var result int
+	var authenticatedStream int
+
+	body, _, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return 0, 10502, err
+	}
+
+	var v interface{}
+	err = json.Unmarshal(body, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return 0, 3, err
+	}
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/authenticatedStream", &authenticatedStream)
+
+	// output
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "authenticatedstream" {
+				fmt.Println("AuthenticatedStream = " + strconv.Itoa(authenticatedStream) + " [default: 1, range: 1-2] ")
+			}
+		}
+	}
+
+	return authenticatedStream, result, err
+}
+
 func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
 	var settings []string
 	var resultCode string
@@ -3146,7 +3415,7 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	u, _ := url.Parse(baseURI)
 	u.Path = path.Join(basePath, "php", "config")
 
-	body, err := callURL("GET", u.String(), token, nil)
+	body, _, err := callURL("GET", u.String(), token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, 10502, err
@@ -3189,7 +3458,7 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	// get XML Technology Configuration
 	u.Path = path.Join(basePath, "xml", "config")
 
-	body, err = callURL("GET", u.String(), token, nil)
+	body, _, err = callURL("GET", u.String(), token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return settings, -1, err
@@ -3279,7 +3548,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 
 	// close databases
 	u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL")
+	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL", false)
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
 			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
@@ -3295,7 +3564,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 		time.Sleep(1 * time.Second)
 		value++
 		u.Path = path.Join(getAPIBasePath(baseURI), "databases")
-		openedID, _, _ = getDatabases(u.String(), token, []string{""}, "CLOSING")
+		openedID, _, _ = getDatabases(u.String(), token, []string{""}, "CLOSING", false)
 		if len(openedID) == 0 || value > 120 {
 			break
 		}
@@ -3327,7 +3596,7 @@ func waitStoppingServer(u *url.URL, baseURI string, token string) (int, error) {
 }
 
 func getBackupTime(url string, token string, id int) int {
-	body, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", url, token, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return -1
@@ -3472,8 +3741,21 @@ func comparePath(name1 string, name2 string) bool {
 		return true
 	}
 
-	if strings.Index(name1, string(os.PathSeparator)) > -1 || strings.Index(name2, string(os.PathSeparator)) > -1 {
+	if strings.Contains(name1, string(os.PathSeparator)) || strings.Contains(name2, string(os.PathSeparator)) {
 		for i := 0; i < len(pathPrefix); i++ {
+			if pathPrefix[i] == "filemac:" && (strings.Contains(name1, pathPrefix[i]) || strings.Contains(name2, pathPrefix[i])) {
+				name1 = strings.Replace(name1, "/Volumes", pathPrefix[i], 1)
+				name2 = strings.Replace(name2, "/Volumes", pathPrefix[i], 1)
+			}
+
+			if name1 == name2 {
+				return true
+			} else if name1 == name2+extName {
+				return true
+			} else if name1+extName == name2 {
+				return true
+			}
+
 			if pathPrefix[i]+name1 == name2 {
 				return true
 			} else if pathPrefix[i]+name1+extName == name2 {
@@ -3544,7 +3826,13 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		}
 		jsonStr, _ = json.Marshal(d)
 	} else if (params{}) != p && reflect.ValueOf(p.command).IsValid() == true && p.command == "set" {
-		if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == true {
+		if strings.HasSuffix(url, "/server/config/authenticatedstream") {
+			// for Claris FileMaker Server 19.3.2 or later
+			d := authenticatedStreamConfigInfo{
+				p.authenticatedstream,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(url, "/server/config/general") && p.startuprestorationbuiltin == true {
 			d := generalOldConfigInfo{
 				p.cachesize,
 				p.maxfiles,
@@ -3617,40 +3905,48 @@ func sendRequest(method string, url string, token string, p params) (int, string
 		jsonStr = []byte("")
 	}
 
-	body, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
+	body, statusCode, err := callURL(method, url, token, bytes.NewBuffer([]byte(jsonStr)))
+	if err != nil {
+		return -1, "", err
+	}
 
 	// for debugging
 	/*
 		fmt.Println(method)
 		fmt.Println(url)
+		fmt.Println(statusCode)
 		fmt.Println(string(jsonStr))
 		fmt.Println(bytes.NewBuffer([]byte(body)))
 	*/
+
+	if statusCode >= 400 {
+		return 10001, "", err
+	}
 
 	if body != nil {
 		output := output{}
 		if json.Unmarshal(body, &output) == nil {
 			for i := 0; i < len(output.Messages); i++ {
-				if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+				if reflect.ValueOf(output.Messages[i].Code).IsValid() {
 					code, _ = strconv.Atoi(output.Messages[i].Code)
 					break
 				}
 			}
 			return code, output.Response.Status, nil
+		} else {
+			// In case of detecting a server-side error
+			return 3, "", err
 		}
-	}
-	if err != nil {
-		return -1, "", err
 	}
 
 	return 0, "", nil
 }
 
-func callURL(method string, url string, token string, request io.Reader) ([]byte, error) {
+func callURL(method string, url string, token string, request io.Reader) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, request)
 	if err != nil {
 		fmt.Println(err.Error())
-		return []byte(""), err
+		return []byte(""), 500, err
 	}
 
 	if request == nil {
@@ -3665,8 +3961,10 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 	client := &http.Client{Timeout: time.Duration(5) * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err.Error())
-		return []byte(""), err
+		// for debugging
+		//fmt.Println(err.Error())
+
+		return []byte(""), res.StatusCode, err
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
@@ -3676,10 +3974,10 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return []byte(""), err
+		return []byte(""), res.StatusCode, err
 	}
 
-	return body, err
+	return body, res.StatusCode, err
 }
 
 func getErrorDescription(errorCode int) string {
@@ -3711,6 +4009,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Resource doesn't exist"
 	case 1708:
 		description = "Parameter value is invalid"
+	case 1713:
+		description = "The API request is not supported for this operating system"
 	case 10001:
 		description = "Invalid parameter"
 	case 10006:
@@ -3753,6 +4053,8 @@ func getErrorDescription(errorCode int) string {
 		description = "File already exists"
 	case 20408:
 		description = "File read error"
+	case 20501:
+		description = "Directory not empty"
 	case 20630:
 		description = "SSL certificate expired"
 	case 20632:
@@ -3857,6 +4159,8 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     LIST            List clients, databases, plug-ins, or schedules
     OPEN            Open databases
     PAUSE           Temporarily stop database access
+    REMOVE          Move databases out of hosted folder
+                    (for FileMaker Server 19.3.1 or later)
     RESTART         Restart a server process
                     (for FileMaker Server 18 or later)
     RESUME          Make paused databases available
@@ -4139,6 +4443,18 @@ Description:
     until a RESUME command is performed.
 
 Options: 
+    No command specific options.
+`
+
+var removeHelpTextTemplate = `Usage: fmcsadmin REMOVE [FILE...] [PATH...]
+
+Description:
+    Moves a database that has been closed into a "Removed" folder so it will 
+    no longer be hosted. Each specified database (FILE) is removed, and all 
+    databases in each folder (PATH) are removed. If no FILE or PATH is 
+    specified, all closed databases in the hosting area are removed.
+
+Options:
     No command specific options.
 `
 

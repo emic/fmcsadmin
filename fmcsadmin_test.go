@@ -1120,6 +1120,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs
 	 * fmcsadmin get serverprefs maxguests maxfiles
 	 * fmcsadmin get serverprefs maxfiles maxguests
+	 * fmcsadmin get serverprefs AuthenticatedStream
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1477,6 +1478,40 @@ func TestGetFlags(t *testing.T) {
 	assert.Equal(t, expected, cmdArgs)
 
 	/*
+	 * remove
+	 * Usage: fmcsadmin REMOVE [FILE...] [PATH...]
+	 *
+	 * fmcsadmin remove
+	 * fmcsadmin remove 1
+	 * fmcsadmin remove 1 2
+	 * fmcsadmin remove TestDB
+	 * fmcsadmin remove TestDB.fmp12
+	 * fmcsadmin remove 11.fmp12
+	 * fmcsadmin remove "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"
+	 * fmcsadmin remove "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"
+	 * fmcsadmin remove "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"
+	 * fmcsadmin remove "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"
+	 * fmcsadmin remove "/opt/FileMaker/FileMaker Server/Data/Databases/"
+	 * fmcsadmin remove "filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/"
+	 * fmcsadmin remove "filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/"
+	 * fmcsadmin remove TestDB FMServer_Sample
+	 * fmcsadmin --fqdn example.jp remove TestDB
+	 * fmcsadmin remove -u USERNAME TestDB
+	 * fmcsadmin remove -p PASSWORD TestDB
+	 * fmcsadmin remove -u USERNAME -p PASSWORD TestDB
+	 * fmcsadmin remove -u USERNAME -p PASSWORD TestDB -y
+	 */
+	expected = []string{"remove", "TestDB"}
+	args = strings.Split("fmcsadmin remove TestDB", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, expected, cmdArgs)
+
+	expected = []string{"remove", "TestDB", "FMServer_Sample"}
+	args = strings.Split("fmcsadmin remove TestDB FMServer_Sample", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, expected, cmdArgs)
+
+	/*
 	 * resume
 	 * Usage: fmcsadmin RESUME [FILE...] [PATH...]
 	 *
@@ -1541,6 +1576,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin --fqdn example.jp -u USERNAME set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
+	 * fmcsadmin set serverprefs AuthenticatedStream=1
+	 * fmcsadmin set serverprefs AuthenticatedStream=2
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100
@@ -1591,6 +1628,13 @@ func TestGetAPIBasePath(t *testing.T) {
 	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("https://example.jp"))
 }
 
+func TestGetServerVersionAsFloat(t *testing.T) {
+	version, _ := getServerVersionAsFloat("19.3.1")
+	assert.Equal(t, 19.3, version)
+	version, _ = getServerVersionAsFloat("19.3.2")
+	assert.Equal(t, 19.3, version)
+}
+
 func TestComparePath(t *testing.T) {
 	assert.Equal(t, false, comparePath("TestDB", "TestDB2"))
 
@@ -1615,6 +1659,11 @@ func TestComparePath(t *testing.T) {
 	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	assert.Equal(t, true, comparePath("filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filemac:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 
+	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB", "/Volumes/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB"))
+	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB", "/Volumes/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB.fmp12"))
+	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB.fmp12", "/Volumes/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB"))
+	assert.Equal(t, true, comparePath("filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB.fmp12", "/Volumes/Macintosh HD/Library/FileMaker Server/Data/Databases/test/TestDB.fmp12"))
+
 	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
 	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	assert.Equal(t, true, comparePath("filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
@@ -1631,10 +1680,10 @@ func TestComparePath(t *testing.T) {
 	assert.Equal(t, true, comparePath("filelinux:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 
 	if runtime.GOOS == "darwin" {
-		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
-		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
-		assert.Equal(t, true, comparePath("filemac:/Macintosh HD/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
+		assert.Equal(t, true, comparePath("filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
+		assert.Equal(t, true, comparePath("filemac:/"+getVolumeName()+"/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12", "/opt/FileMaker/FileMaker Server/Data/Databases/TestDB.fmp12"))
 	}
 
 	assert.Equal(t, true, comparePath("/opt/FileMaker/FileMaker Server/Data/Databases/TestDB", "filewin:/opt/FileMaker/FileMaker Server/Data/Databases/TestDB"))
