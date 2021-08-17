@@ -30,7 +30,7 @@ jobs:
       run: |
         VERSION=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
         echo ::set-output name=version::$VERSION
-        
+
     - name: Create release
       id: create_release
       uses: actions/create-release@v1.1.4
@@ -51,7 +51,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-1.3.0-dev-linux.tar.gz
+        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-linux.tar.gz
         asset_name: fmcsadmin-${{ steps.version.outputs.version }}-linux.tar.gz
         asset_content_type: application/gzip
 
@@ -63,7 +63,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-1.3.0-dev-windows-x64.zip
+        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
         asset_name: fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
         asset_content_type: application/zip
 
@@ -75,6 +75,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-1.3.0-dev-windows-x32.zip
+        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-windows-x32.zip
         asset_name: fmcsadmin-${{ steps.version.outputs.version }}-windows-x32.zip
         asset_content_type: application/zip

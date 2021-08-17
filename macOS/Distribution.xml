@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-    <title>fmcsadmin 1.3.0-dev</title>
+    <title>fmcsadmin 1.3.0</title>
     <welcome file="welcome.txt" />
     <license file="LICENSE.txt" />
     <pkg-ref id="jp.co.emic.fmcsadmin"/>
