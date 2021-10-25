@@ -3964,6 +3964,10 @@ func callURL(method string, url string, token string, request io.Reader) ([]byte
 		// for debugging
 		//fmt.Println(err.Error())
 
+		if res == nil {
+			return []byte(""), 404, err
+		}
+
 		return []byte(""), res.StatusCode, err
 	}
 	defer res.Body.Close()
