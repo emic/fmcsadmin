@@ -1,6 +1,6 @@
 /**
  * fmcsadmin
- * (c) 2017-2021 Emic Corporation <https://www.emic.co.jp/>
+ * (c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
  * This software is distributed under the MIT License.
  */
 package main
@@ -4123,9 +4123,8 @@ func getDateTimeStringOfCurrentTimeZone(dateTime string, outputFormat string) st
 var helpTextTemplate = `Usage: fmcsadmin [options] [COMMAND]
 
 Description: 
-    fmcsadmin is the command line tool to administer the Database Server 
-    component of Calris FileMaker Server and FileMaker Cloud for AWS via 
-    Claris FileMaker Admin API.
+    fmcsadmin is a command line tool to administer the Database Server 
+    component of Calris FileMaker Server via Claris FileMaker Admin API.
 
     You can script many tasks with fmcsadmin by using a scripting language 
     that allows execution of shell or terminal commands.
@@ -4158,7 +4157,6 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     ENABLE          Enable schedules
     GET             Retrieve server or CWP configuration settings, or retrieve 
                     the start time of a backup schedule or schedules
-                    (for FileMaker Server 18 or later)
     HELP            Get help pages
     LIST            List clients, databases, plug-ins, or schedules
     OPEN            Open databases
@@ -4166,18 +4164,14 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     REMOVE          Move databases out of hosted folder
                     (for FileMaker Server 19.3.1 or later)
     RESTART         Restart a server process
-                    (for FileMaker Server 18 or later)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
     SET             Change server or CWP configuration settings, or change the 
                     start time of a backup schedule
-                    (for FileMaker Server 18 or later)
     START           Start a server process
-                    (for FileMaker Server 18 or later)
     STATUS          Get status of clients or databases
     STOP            Stop a server process
-                    (for FileMaker Server 18 or later)
 `
 
 var optionListHelpTextTemplate = `Many fmcsadmin commands take options and parameters.
@@ -4354,7 +4348,6 @@ Description:
 
     The GET CONFIG_TYPE command retrieves the server or Custom Web Publishing 
     configurations.
-    (The GET CONFIG_TYPE command is not supported for FileMaker Cloud for AWS.)
 
     Valid configuration types of CONFIG_TYPE:
       SERVERCONFIG     Retrieve the server configuration settings.            
@@ -4467,7 +4460,6 @@ var restartHelpTextTemplate = `Usage: fmcsadmin RESTART [TYPE]
 Description:
     Restarts the server of specified TYPE. This command stops the server 
     TYPE and then starts it after a short delay.
-    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPEs:
         SERVER          Stops then starts the Database Server.
@@ -4526,7 +4518,6 @@ var setHelpTextTemplate = `Usage: fmcsadmin SET [CONFIG_TYPE] [NAME1=VALUE1 NAME
 Description:
     The SET CONFIG_TYPE command changes the server or Custom Web Publishing
     configuration settings.
-    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid configuration types of CONFIG_TYPE:
       SERVERCONFIG     Change the server configuration settings.             
@@ -4566,7 +4557,6 @@ var startHelpTextTemplate = `Usage: fmcsadmin START [TYPE]
 
 Description:
     Starts the server of specified TYPE.
-    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPE:
         SERVER          Starts the Database Server.
@@ -4593,7 +4583,6 @@ var stopHelpTextTemplate = `Usage: fmcsadmin STOP [TYPE] [options]
 
 Description:
     Stops the server of specified TYPE.
-    (This command is not supported for FileMaker Cloud for AWS.)
 
     Valid server TYPE:
         SERVER          Stops the Database Server. By default, all clients

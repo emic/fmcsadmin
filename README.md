@@ -1,6 +1,6 @@
 fmcsadmin [![Build Status](https://github.com/emic/fmcsadmin/actions/workflows/go.yml/badge.svg)](https://github.com/emic/fmcsadmin/actions/workflows/go.yml)
 =========
-fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Server and Claris FileMaker Cloud for AWS 1.18 via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
+fmcsadmin is a command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
 
 Features
 -----
@@ -15,24 +15,19 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for Claris FileMaker Server)
-- Restart a server process (for Claris FileMaker Server)
-- Stop a server process (for Claris FileMaker Server)
-- Retrieve server or CWP configuration settings (for Claris FileMaker Server)
-- Change server or CWP configuration settings (for Claris FileMaker Server)
-- List plug-ins (for Claris FileMaker Server 19.2.1 or later)
-- Manage SSL certificates (for Claris FileMaker Server 19.2.1 or later)
-- Move databases out of hosted folder (for Claris FileMaker Server 19.3.1 or later)
-- View and change the setting for sharing streaming URLs (for Claris FileMaker Server 19.3.2 or later)
+- Start a server process
+- Restart a server process
+- Stop a server process
+- Retrieve server or CWP configuration settings
+- Change server or CWP configuration settings
+- List plug-ins (for FileMaker Server 19.2.1 or later)
+- Manage SSL certificates (for FileMaker Server 19.2.1 or later)
+- Move databases out of hosted folder (for FileMaker Server 19.3.1 or later)
+- View and change the setting for sharing streaming URLs (for FileMaker Server 19.3.2 or later)
 
 Supported Servers
 -----
 - Claris FileMaker Server 19 (19.0, 19.1, 19.2, 19.3)
-
-Deprecated Software
------
-- Claris FileMaker Server 18
-- Claris FileMaker Cloud for AWS 1.18
 
 Usage
 -----
@@ -48,7 +43,7 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
     fmcsadmin HELP OPTIONS
        Lists available options
 ```
-Note: Handling schedule ID 1 is not supported for Claris FileMaker Server.
+Note: Handling schedule ID 1 is not supported for FileMaker Server.
 
 System Requirements
 -----
