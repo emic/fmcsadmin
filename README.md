@@ -56,13 +56,6 @@ Download
 -----
 Download from the [latest release page](https://github.com/emic/fmcsadmin/releases/latest).
 
-Installing Source Code
------
-```
-go get github.com/emic/fmcsadmin
-```
-Note: You need to install Go (not "Claris FileMaker Go").
-
 Author
 -----
 Emic Corporation <https://www.emic.co.jp/>
