@@ -4,6 +4,8 @@ This software is distributed under the MIT License, see LICENSE.txt and NOTICE.t
 
 Version: 1.4.0 (in development)
 - [INFO] Drop support for Claris FileMaker Server 18 and FileMaker Cloud for AWS 1.18.
+- [INFO] Drop support for macOS Mojave 10.14.
+- [INFO] Drop support for CentOS Linux 8.
 - [BUG FIX] Improve DNS error handling when using "--fqdn" option.
 
 Version: 1.3.0

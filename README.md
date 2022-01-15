@@ -48,8 +48,8 @@ Note: Handling schedule ID 1 is not supported for FileMaker Server.
 System Requirements
 -----
 - Ubuntu 18.04 LTS
-- CentOS Linux 7 or later
-- macOS Mojave 10.14.6 or later
+- CentOS Linux 7
+- macOS Catalina 10.15.7 or later
 - Windows 10
 
 Download
