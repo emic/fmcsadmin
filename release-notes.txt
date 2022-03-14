@@ -3,8 +3,11 @@ fmcsadmin
 This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
 
 Version: 1.4.0 (in development)
+- Tested with Claris FileMaker Server 19.4.
+- Tested on Windows 11 and macOS Monterey 12.
 - Built with Go 1.17.
 - [INFO] Drop support for Claris FileMaker Server 18 and FileMaker Cloud for AWS 1.18.
+- [INFO] Drop support for Windows 10 Version 1903, 1909, 2004 and 20H2.
 - [INFO] Drop support for macOS Mojave 10.14.
 - [INFO] Drop support for CentOS Linux 8.
 - [BUG FIX] Improve DNS error handling when using "--fqdn" option.
