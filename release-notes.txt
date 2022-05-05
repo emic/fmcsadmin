@@ -1,8 +1,9 @@
 fmcsadmin
 (c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
-This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
+This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
-Version: 1.4.0 (in development)
+Version: 2.0.0 (in development)
+- Change to the Apache License, Version 2.0.
 - Change an error message when specifying the host name of Claris FileMaker Cloud with "--fqdn" option.
 - Tested with Claris FileMaker Server 19.4.
 - Tested on Windows 11 and macOS Monterey 12.

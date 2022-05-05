@@ -1,8 +1,19 @@
-/**
- * fmcsadmin
- * (c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
- * This software is distributed under the MIT License.
- */
+/*
+fmcsadmin
+Copyright 2017-2022 Emic Corporation, https://www.emic.co.jp/
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package main
 
 import (
@@ -4197,8 +4208,9 @@ Author:
     Emic Corporation <https://www.emic.co.jp/>
 
 License:
-    This software is distributed under the MIT License.
-    Please see <https://github.com/emic/fmcsadmin/NOTICE.txt> for details.
+    This software is distributed under the Apache License, Version 2.0, 
+    please see <https://github.com/emic/fmcsadmin/blob/main/NOTICE.txt> 
+    for details.
 `
 
 var commandListHelpTextTemplate = `fmcsadmin commands are:

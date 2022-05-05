@@ -61,4 +61,4 @@ Emic Corporation <https://www.emic.co.jp/>
 
 License
 -----
-This software is distributed under the MIT License, see LICENSE.txt and NOTICE.txt for more information.
+This software is distributed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0), see LICENSE.txt and NOTICE.txt for more information.
