@@ -9,6 +9,7 @@ Version: 2.0.0 (in development)
 - Tested on Windows 11 and macOS Monterey 12.
 - Built with Go 1.18.
 - [INFO] Drop support for Claris FileMaker Server 18 and FileMaker Cloud for AWS 1.18.
+- [INFO] Drop support for 32-bit Windows version.
 - [INFO] Drop support for Windows 10 Version 1903, 1909, 2004 and 20H2.
 - [INFO] Drop support for macOS Mojave 10.14.
 - [INFO] Drop support for CentOS Linux 8.
