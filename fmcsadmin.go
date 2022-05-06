@@ -1036,6 +1036,11 @@ func (c *cli) Run(args []string) int {
 							}
 
 							if exitStatus == 0 {
+								if !usingCloud {
+									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+									_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
+								}
+
 								for _, option := range printOptions {
 									if option == "authenticatedstream" {
 										if usingCloud {
