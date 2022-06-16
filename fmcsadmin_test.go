@@ -244,6 +244,17 @@ func TestRunWithVersionOption2(t *testing.T) {
 	assert.Contains(t, outStream.String(), expected)
 }
 
+func TestRunCancelCommand(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin cancel", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 248, status)
+	expected := "Error: 11000 (Invalid command)"
+	assert.Contains(t, outStream.String(), expected)
+}
+
 func TestRunDeleteCommand1(t *testing.T) {
 	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
 	cli := &cli{outStream: outStream, errStream: errStream}
@@ -696,6 +707,24 @@ func TestGetFlags(t *testing.T) {
 	flags.message = ""
 	flags.clientID = -1
 	flags.graceTime = 90
+
+	/*
+	 * cancel
+	 * Usage: fmcsadmin CANCEL [TYPE]
+	 *
+	 * fmcsadmin cancel backup
+	 * fmcsadmin cancel -y backup
+	 * fmcsadmin --fqdn example.jp cancel backup
+	 * fmcsadmin --fqdn example.jp cancel -y backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME cancel backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME cancel -y backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD cancel backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD cancel -y backup
+	 */
+	expected = []string{"cancel", "backup"}
+	args = strings.Split("fmcsadmin cancel backup", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, expected, cmdArgs)
 
 	/*
 	 * certificate

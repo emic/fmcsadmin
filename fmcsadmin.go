@@ -303,6 +303,49 @@ func (c *cli) Run(args []string) int {
 
 	if len(cmdArgs) > 0 {
 		switch strings.ToLower(cmdArgs[0]) {
+		case "cancel":
+			if usingCloud {
+				exitStatus = 3
+			} else {
+				if len(cmdArgs[1:]) > 0 {
+					switch strings.ToLower(cmdArgs[1]) {
+					case "backup":
+						running := true
+						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+						_, err := http.Get(u.String())
+						if err != nil {
+							running = false
+						}
+
+						if running {
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							if token != "" && err == nil {
+								version := getServerVersion(u.String(), token)
+								if !usingCloud && version >= 19.5 {
+									u.Path = path.Join(getAPIBasePath(baseURI), "server", "cancelbackup")
+									exitStatus, _, err = sendRequest("POST", u.String(), token, params{command: "cancel backup"})
+									if err == nil {
+										fmt.Fprintln(c.outStream, "Command finished")
+									} else {
+										fmt.Fprintln(c.outStream, err.Error())
+									}
+								} else {
+									exitStatus = outputInvalidCommandErrorMessage(c)
+								}
+								logout(baseURI, token)
+							} else if exitStatus != 9 {
+								exitStatus = 10502
+							}
+						} else {
+							exitStatus = 10502
+						}
+					default:
+						exitStatus = outputInvalidCommandErrorMessage(c)
+					}
+				} else {
+					exitStatus = outputInvalidCommandErrorMessage(c)
+				}
+			}
 		case "certificate":
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
@@ -1036,7 +1079,7 @@ func (c *cli) Run(args []string) int {
 								if (version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1")) || usingCloud {
 									printOptions = append(printOptions, "authenticatedstream")
 								}
-								if version >= 19.5 {
+								if !usingCloud && version >= 19.5 {
 									printOptions = append(printOptions, "parallelbackupenabled")
 								}
 							}
@@ -1097,6 +1140,8 @@ func (c *cli) Run(args []string) int {
 					fmt.Fprint(c.outStream, commandListHelpTextTemplate)
 				case "options":
 					fmt.Fprint(c.outStream, optionListHelpTextTemplate)
+				case "cancel":
+					fmt.Fprint(c.outStream, cancelHelpTextTemplate)
 				case "certificate":
 					fmt.Fprint(c.outStream, certificateHelpTextTemplate)
 				case "close":
@@ -3522,13 +3567,13 @@ func getAuthenticatedStreamSetting(urlString string, token string, printOptions 
 	return authenticatedStream, result, err
 }
 
-func getParallelBackupSetting(url string, token string, printOptions []string) (bool, int, error) {
+func getParallelBackupSetting(urlString string, token string, printOptions []string) (bool, int, error) {
 	var resultCode string
 	var result int
 	var parallelBackupEnabled bool
 	var parallelBackupEnabledStr string
 
-	body, _, err := callURL("GET", url, token, nil)
+	body, _, err := callURL("GET", urlString, token, nil)
 	if err != nil {
 		return false, 10502, err
 	}
@@ -4327,6 +4372,8 @@ License:
 
 var commandListHelpTextTemplate = `fmcsadmin commands are:
 
+    CANCEL          Cancel the currently running operation
+                    (for FileMaker Server 19.5.1 or later)
     CERTIFICATE     Manage SSL certificates
                     (for FileMaker Server 19.2.1 or later)
     CLOSE           Close databases
@@ -4342,15 +4389,15 @@ var commandListHelpTextTemplate = `fmcsadmin commands are:
     PAUSE           Temporarily stop database access
     REMOVE          Move databases out of hosted folder
                     (for FileMaker Server 19.3.1 or later)
-    RESTART         Restart a server process
+    RESTART         Restart a server process (for FileMaker Server)
     RESUME          Make paused databases available
     RUN             Run a schedule
     SEND            Send a message
     SET             Change server or CWP configuration settings, or change the 
                     start time of a backup schedule
-    START           Start a server process
+    START           Start a server process (for FileMaker Server)
     STATUS          Get status of clients or databases
-    STOP            Stop a server process
+    STOP            Stop a server process (for FileMaker Server)
 `
 
 var optionListHelpTextTemplate = `Many fmcsadmin commands take options and parameters.
@@ -4400,6 +4447,15 @@ Options that apply to specific commands:
     --savekey                  Save the database encryption password.
     -t sec, --gracetime sec    Specify time in seconds before client is forced
                                to disconnect.
+`
+
+var cancelHelpTextTemplate = `Usage: fmcsadmin CANCEL [TYPE]
+
+Description:
+    Cancel the currently running operation of specified TYPE.
+
+    Valid operation TYPEs:
+        BACKUP          Cancel the currently running backup.
 `
 
 var certificateHelpTextTemplate = `Usage: fmcsadmin CERTIFICATE [CERT_OP] [options] [NAME] [FILE]
