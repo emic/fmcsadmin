@@ -319,7 +319,7 @@ func (c *cli) Run(args []string) int {
 
 						if running {
 							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-							if token != "" && err == nil {
+							if token != "" && exitStatus == 0 && err == nil {
 								version := getServerVersion(u.String(), token)
 								if !usingCloud && version >= 19.5 {
 									u.Path = path.Join(getAPIBasePath(baseURI), "server", "cancelbackup")
@@ -359,7 +359,7 @@ func (c *cli) Run(args []string) int {
 
 					if running == true {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							version := getServerVersion(u.String(), token)
 							if version >= 19.2 {
 								if len(cmdArgs) < 3 {
@@ -390,7 +390,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = outputInvalidCommandErrorMessage(c)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					} else {
@@ -408,7 +408,7 @@ func (c *cli) Run(args []string) int {
 					}
 					if res == "y" {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 							version := getServerVersion(u.String(), token)
 							if version >= 19.2 {
@@ -586,7 +586,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = outputInvalidCommandErrorMessage(c)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -602,7 +602,7 @@ func (c *cli) Run(args []string) int {
 					}
 					if res == "y" {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 							version := getServerVersion(u.String(), token)
 							if version >= 19.2 {
@@ -618,7 +618,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = outputInvalidCommandErrorMessage(c)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -640,7 +640,7 @@ func (c *cli) Run(args []string) int {
 			}
 			if res == "y" {
 				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-				if token != "" && err == nil {
+				if token != "" && exitStatus == 0 && err == nil {
 					u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 					args = []string{""}
 					if len(cmdArgs[1:]) > 0 {
@@ -664,7 +664,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 10904
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 {
+				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 					exitStatus = 10502
 				}
 			}
@@ -683,7 +683,7 @@ func (c *cli) Run(args []string) int {
 					}
 					if res == "y" {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
 								sid, err := strconv.Atoi(cmdArgs[2])
@@ -709,7 +709,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = 10600
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -732,7 +732,7 @@ func (c *cli) Run(args []string) int {
 					}
 					if res == "y" {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
 								sid, err := strconv.Atoi(cmdArgs[2])
@@ -751,7 +751,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = 10600
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -776,7 +776,7 @@ func (c *cli) Run(args []string) int {
 					}
 					if res == "y" {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
 								cid, err := strconv.Atoi(cmdArgs[2])
@@ -819,7 +819,7 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -832,7 +832,7 @@ func (c *cli) Run(args []string) int {
 		case "enable":
 			if len(cmdArgs[1:]) > 0 {
 				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-				if token != "" && err == nil {
+				if token != "" && exitStatus == 0 && err == nil {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "schedule":
 						id := 0
@@ -856,7 +856,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 11002
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 {
+				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 					exitStatus = 10502
 				}
 			} else {
@@ -867,7 +867,7 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "backuptime":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						id := 0
 						if len(cmdArgs) >= 3 {
 							sid, err := strconv.Atoi(cmdArgs[2])
@@ -878,7 +878,7 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 						exitStatus = getBackupTime(u.String(), token, id)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				case "cwpconfig":
@@ -908,7 +908,7 @@ func (c *cli) Run(args []string) int {
 
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							printOptions := []string{}
 							if len(cmdArgs[2:]) > 0 {
 								for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -949,7 +949,7 @@ func (c *cli) Run(args []string) int {
 								_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -974,7 +974,7 @@ func (c *cli) Run(args []string) int {
 
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							printOptions := []string{}
 							if len(cmdArgs[2:]) > 0 {
 								for i := 0; i < len(cmdArgs[2:]); i++ {
@@ -1008,7 +1008,7 @@ func (c *cli) Run(args []string) int {
 								_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -1037,7 +1037,7 @@ func (c *cli) Run(args []string) int {
 
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 							versionString, _ := getServerVersionString(u.String(), token)
 							version, _ := getServerVersionAsFloat(versionString)
@@ -1123,7 +1123,7 @@ func (c *cli) Run(args []string) int {
 							}
 
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -1193,7 +1193,7 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "clients":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						id := -1
 						if statsFlag == true {
 							id = 0
@@ -1201,12 +1201,12 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "clients")
 						exitStatus = listClients(u.String(), token, id)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				case "files":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						idList := []int{-1}
 						if statsFlag == true {
 							idList = []int{0}
@@ -1214,12 +1214,12 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 						exitStatus = listFiles(c, u.String(), token, idList)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				case "plugins":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 						version := getServerVersion(u.String(), token)
 						if version >= 19.2 {
@@ -1236,16 +1236,16 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				case "schedules":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 						exitStatus = listSchedules(u.String(), token, 0)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				default:
@@ -1256,7 +1256,7 @@ func (c *cli) Run(args []string) int {
 			}
 		case "open":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-			if token != "" && err == nil {
+			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
@@ -1295,12 +1295,12 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 {
+			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 				exitStatus = 10502
 			}
 		case "pause":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-			if token != "" && err == nil {
+			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
@@ -1322,7 +1322,7 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 {
+			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 				exitStatus = 10502
 			}
 		case "remove":
@@ -1337,7 +1337,7 @@ func (c *cli) Run(args []string) int {
 			}
 			if res == "y" {
 				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-				if token != "" && err == nil {
+				if token != "" && exitStatus == 0 && err == nil {
 					u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 					version := getServerVersion(u.String(), token)
 					if version >= 19.3 {
@@ -1375,7 +1375,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = outputInvalidCommandErrorMessage(c)
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 {
+				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 					exitStatus = 10502
 				}
 			}
@@ -1394,7 +1394,7 @@ func (c *cli) Run(args []string) int {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "server":
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							// stop database server
 							if forceFlag == true {
 								graceTime = 0
@@ -1406,7 +1406,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					default:
@@ -1418,7 +1418,7 @@ func (c *cli) Run(args []string) int {
 			}
 		case "resume":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-			if token != "" && err == nil {
+			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
@@ -1440,7 +1440,7 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 {
+			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 				exitStatus = 10502
 			}
 		case "run":
@@ -1448,7 +1448,7 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "schedule":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						id := 0
 						if len(cmdArgs) >= 3 {
 							sid, err := strconv.Atoi(cmdArgs[2])
@@ -1474,7 +1474,7 @@ func (c *cli) Run(args []string) int {
 							exitStatus = 10600
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				default:
@@ -1485,10 +1485,10 @@ func (c *cli) Run(args []string) int {
 			}
 		case "send":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-			if token != "" && err == nil {
+			if token != "" && exitStatus == 0 && err == nil {
 				exitStatus = sendMessages(u, baseURI, token, message, cmdArgs, clientID)
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 {
+			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 				exitStatus = 10502
 			}
 		case "set":
@@ -1523,7 +1523,7 @@ func (c *cli) Run(args []string) int {
 
 						if exitStatus == 0 {
 							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-							if token != "" && err == nil {
+							if token != "" && exitStatus == 0 && err == nil {
 								var settings []string
 								printOptions := []string{}
 								settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
@@ -1658,7 +1658,7 @@ func (c *cli) Run(args []string) int {
 									}
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 {
+							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 								exitStatus = 10502
 							}
 						}
@@ -1691,7 +1691,7 @@ func (c *cli) Run(args []string) int {
 
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							var settings []int
 							printOptions := []string{}
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
@@ -1808,7 +1808,7 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -1839,7 +1839,7 @@ func (c *cli) Run(args []string) int {
 
 					if exitStatus == 0 {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 							versionString, _ := getServerVersionString(u.String(), token)
 							version, _ := getServerVersionAsFloat(versionString)
@@ -2053,7 +2053,7 @@ func (c *cli) Run(args []string) int {
 							}
 
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					}
@@ -2068,7 +2068,7 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "server":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						var running string
 						u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
 						exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
@@ -2080,7 +2080,7 @@ func (c *cli) Run(args []string) int {
 							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				default:
@@ -2094,7 +2094,7 @@ func (c *cli) Run(args []string) int {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "client":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						id := 0
 						if len(cmdArgs) >= 3 {
 							sid, err := strconv.Atoi(cmdArgs[2])
@@ -2107,12 +2107,12 @@ func (c *cli) Run(args []string) int {
 							exitStatus = listClients(u.String(), token, id)
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				case "file":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-					if token != "" && err == nil {
+					if token != "" && exitStatus == 0 && err == nil {
 						if len(cmdArgs[2:]) > 0 {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "", false)
@@ -2123,7 +2123,7 @@ func (c *cli) Run(args []string) int {
 							exitStatus = 10001
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 {
+					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 						exitStatus = 10502
 					}
 				default:
@@ -2147,7 +2147,7 @@ func (c *cli) Run(args []string) int {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "server":
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
-						if token != "" && err == nil {
+						if token != "" && exitStatus == 0 && err == nil {
 							message = "Stopping FileMaker Database Engine..."
 							// message = "FileMaker データベースエンジンの停止中..."
 							if forceFlag == true {
@@ -2158,7 +2158,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus, err = waitStoppingServer(u, baseURI, token)
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 {
+						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
 							exitStatus = 10502
 						}
 					default:
@@ -2599,7 +2599,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 
 		code := ""
 		for i := 0; i < len(output.Messages); i++ {
-			if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+			if reflect.ValueOf(output.Messages[i].Code).IsValid() {
 				code = output.Messages[i].Code
 				break
 			}
@@ -2610,6 +2610,10 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 			if p.retry > 0 {
 				fmt.Println("fmcsadmin: Permission denied, please try again.")
 				token, exitStatus, err = login(baseURI, user, pass, params{retry: p.retry - 1})
+				if err != nil {
+					exitStatus = 10502
+					return token, exitStatus, err
+				}
 			} else {
 				fmt.Println("fmcsadmin: Permission denied.")
 				exitStatus = 9
@@ -3176,7 +3180,7 @@ func sendMessage(url string, token string, message string) int {
 		fmt.Println(err.Error())
 	} else {
 		for i := 0; i < len(output.Messages); i++ {
-			if reflect.ValueOf(output.Messages[i].Code).IsValid() == true {
+			if reflect.ValueOf(output.Messages[i].Code).IsValid() {
 				code, _ = strconv.Atoi(output.Messages[i].Code)
 				break
 			}
@@ -4228,6 +4232,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Too many login attempts, account locked out"
 	case 802:
 		description = "Unable to open the file"
+	case 956:
+		description = "Maximum number of Admin API sessions exceeded"
 	case 958:
 		description = "Parameter missing"
 	case 960:
