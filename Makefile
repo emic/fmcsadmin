@@ -5,6 +5,7 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
+GOINSTALL=$(GOCMD) install
 DIST_DIR=dist
 LINUX_DIR=linux
 MACOS_DIR=macos
@@ -17,10 +18,10 @@ DIST_WINDOWS_DIR=$(NAME)-$(VERSION)-$(WINDOWS_DIR)
 all: test build
 
 deps:
-	$(GOGET) github.com/mattn/go-scan
-	$(GOGET) github.com/olekukonko/tablewriter
-	$(GOGET) golang.org/x/crypto/ssh/terminal
-	$(GOGET) github.com/stretchr/testify/assert
+	$(GOINSTALL) github.com/mattn/go-scan
+	$(GOINSTALL) github.com/olekukonko/tablewriter
+	$(GOINSTALL) golang.org/x/term
+	$(GOINSTALL) github.com/stretchr/testify/assert
 
 test: deps
 	$(GOTEST) --cover

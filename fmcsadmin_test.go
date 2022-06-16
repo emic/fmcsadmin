@@ -1121,6 +1121,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs maxguests maxfiles
 	 * fmcsadmin get serverprefs maxfiles maxguests
 	 * fmcsadmin get serverprefs AuthenticatedStream
+	 * fmcsadmin get serverprefs ParallelBackupEnabled
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime

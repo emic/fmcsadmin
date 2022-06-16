@@ -4,8 +4,9 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 
 Version: 2.0.0 (in development)
 - Change to the Apache License, Version 2.0.
+- Update "GET SERVERPREFS" command to get the server parallel backup setting for Claris FileMaker Server 19.5.1. (Usage: "fmcsadmin get serverprefs ParallelBackupEnabled")
 - Change an error message when specifying the host name of Claris FileMaker Cloud with "--fqdn" option.
-- Tested with Claris FileMaker Server 19.4.
+- Tested with Claris FileMaker Server 19.5.
 - Tested on Windows 11 and macOS Monterey 12.
 - Built with Go 1.18.
 - [INFO] Drop support for Claris FileMaker Server 18 and FileMaker Cloud for AWS 1.18.

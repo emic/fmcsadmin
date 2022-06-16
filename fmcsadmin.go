@@ -43,7 +43,7 @@ import (
 
 	"github.com/mattn/go-scan"
 	"github.com/olekukonko/tablewriter"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var version string
@@ -285,7 +285,7 @@ func (c *cli) Run(args []string) int {
 	u, _ := url.Parse(baseURI)
 
 	usingCloud := false
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) == true {
+	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) {
 		// Not Supported
 		usingCloud = true
 	}
@@ -968,14 +968,14 @@ func (c *cli) Run(args []string) int {
 					startupRestoration := false
 					if len(cmdArgs[2:]) > 0 {
 						for i := 0; i < len(cmdArgs[2:]); i++ {
-							if regexp.MustCompile(`(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+							if regexp.MustCompile(`(.*)`).Match([]byte(cmdArgs[2:][i])) {
 								rep := regexp.MustCompile(`(.*)`)
 								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 								switch strings.ToLower(option) {
 								case "maxguests", "maxfiles", "cachesize", "allowpsos", "requiresecuredb":
 								case "startuprestorationenabled":
 									startupRestoration = true
-								case "authenticatedstream":
+								case "authenticatedstream", "parallelbackupenabled":
 								default:
 									exitStatus = 3
 								}
@@ -1012,6 +1012,8 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "startuprestorationenabled")
 									case "authenticatedstream":
 										printOptions = append(printOptions, "authenticatedstream")
+									case "parallelbackupenabled":
+										printOptions = append(printOptions, "parallelbackupenabled")
 									default:
 										exitStatus = 3
 									}
@@ -1028,6 +1030,9 @@ func (c *cli) Run(args []string) int {
 								printOptions = append(printOptions, "startuprestorationenabled")
 								if (version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1")) || usingCloud {
 									printOptions = append(printOptions, "authenticatedstream")
+								}
+								if version >= 19.5 {
+									printOptions = append(printOptions, "parallelbackupenabled")
 								}
 							}
 
@@ -1050,6 +1055,18 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 19.3 || strings.HasPrefix(versionString, "19.3.1") {
+												exitStatus = 3
+											}
+										}
+									}
+
+									if option == "parallelbackupenabled" {
+										if usingCloud {
+											// for Claris FileMaker Cloud
+											exitStatus = 3
+										} else {
+											// for Claris FileMaker Server
+											if version < 19.5 {
 												exitStatus = 3
 											}
 										}
@@ -2458,7 +2475,7 @@ func getUsernameAndPassword(username string, password string) (string, string) {
 
 	if len(password) == 0 {
 		fmt.Print("password: ")
-		bytePassword, _ := terminal.ReadPassword(int(syscall.Stdin))
+		bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
 		password = string(bytePassword)
 		fmt.Printf("\n")
 	}
@@ -2473,7 +2490,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 
 	username, password := getUsernameAndPassword(user, pass)
 
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) == true {
+	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) {
 		// for Claris FileMaker Cloud
 		exitStatus = 21
 		err = errors.New(fmt.Sprintf("Not Supported"))
@@ -3377,6 +3394,12 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 					getAuthenticatedStreamSetting(strings.Replace(urlString, "/general", "/authenticatedstream", 1), token, []string{option})
 				}
 			}
+
+			if option == "parallelbackupenabled" {
+				if version >= 19.5 {
+					getParallelBackupSetting(strings.Replace(urlString, "/general", "/parallelbackup", 1), token, []string{option})
+				}
+			}
 		}
 	}
 
@@ -3460,6 +3483,47 @@ func getAuthenticatedStreamSetting(urlString string, token string, printOptions 
 	}
 
 	return authenticatedStream, result, err
+}
+
+func getParallelBackupSetting(url string, token string, printOptions []string) (bool, int, error) {
+	var resultCode string
+	var result int
+	var parallelBackupEnabled bool
+	var parallelBackupEnabledStr string
+
+	body, _, err := callURL("GET", url, token, nil)
+	if err != nil {
+		return false, 10502, err
+	}
+
+	var v interface{}
+	err = json.Unmarshal(body, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return false, 3, err
+	}
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/parallelBackupEnabled", &parallelBackupEnabled)
+
+	parallelBackupEnabledStr = "false"
+	if parallelBackupEnabled {
+		parallelBackupEnabledStr = "true"
+	}
+
+	// output
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "parallelbackupenabled" {
+				fmt.Println("ParallelBackupEnabled = " + parallelBackupEnabledStr + " [default: false] ")
+			}
+		}
+	}
+
+	return parallelBackupEnabled, result, err
 }
 
 func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
