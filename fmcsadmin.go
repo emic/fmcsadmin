@@ -86,6 +86,10 @@ type authenticatedStreamConfigInfo struct {
 	AuthenticatedStream int `json:"authenticatedStream"`
 }
 
+type parallelBackupConfigInfo struct {
+	ParallelBackupEnabled bool `json:"parallelBackupEnabled"`
+}
+
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -151,6 +155,7 @@ type params struct {
 	startuprestorationbuiltin bool
 	requiresecuredb           string
 	authenticatedstream       int
+	parallelbackupenabled     bool
 	characterencoding         string
 	errormessagelanguage      string
 	dataprevalidation         bool
@@ -1765,12 +1770,12 @@ func (c *cli) Run(args []string) int {
 				case "serverprefs":
 					if len(cmdArgs[2:]) > 0 {
 						for i := 0; i < len(cmdArgs[2:]); i++ {
-							if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+							if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) {
 								rep := regexp.MustCompile(`(.*)=(.*)`)
 								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
-								case "authenticatedstream":
+								case "authenticatedstream", "parallelbackupenabled":
 								default:
 									exitStatus = 3
 								}
@@ -1822,13 +1827,13 @@ func (c *cli) Run(args []string) int {
 								}
 
 								results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
+
 								authenticatedStream, _ := strconv.Atoi(results[6])
 								if results[6] != "" {
 									if authenticatedStream < 1 || authenticatedStream > 2 {
 										exitStatus = 10001
 									}
 								}
-
 								if exitStatus == 0 {
 									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
 									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
@@ -1856,8 +1861,12 @@ func (c *cli) Run(args []string) int {
 									}
 									secureFilesOnlyFlag := results[5]
 									authenticatedStream, _ := strconv.Atoi(results[6])
+									parallelBackupEnabled := false
+									if results[7] == "true" {
+										parallelBackupEnabled = true
+									}
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" || results[7] != "" {
 										if results[0] != "" {
 											if cacheSize < 64 || cacheSize > 1048576 {
 												exitStatus = 10001
@@ -1898,7 +1907,7 @@ func (c *cli) Run(args []string) int {
 										printOptions = []string{}
 										if len(cmdArgs[2:]) > 0 {
 											for i := 0; i < len(cmdArgs[2:]); i++ {
-												if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) == true {
+												if regexp.MustCompile(`(.*)=(.*)`).Match([]byte(cmdArgs[2:][i])) {
 													rep := regexp.MustCompile(`(.*)=(.*)`)
 													option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 													switch strings.ToLower(option) {
@@ -1916,6 +1925,8 @@ func (c *cli) Run(args []string) int {
 														printOptions = append(printOptions, "requiresecuredb")
 													case "authenticatedstream":
 														printOptions = append(printOptions, "authenticatedstream")
+													case "parallelbackupenabled":
+														printOptions = append(printOptions, "parallelbackupenabled")
 													default:
 														exitStatus = 3
 													}
@@ -1933,6 +1944,9 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "requiresecuredb")
 											if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 												printOptions = append(printOptions, "authenticatedstream")
+											}
+											if version >= 19.5 {
+												printOptions = append(printOptions, "parallelbackupenabled")
 											}
 										}
 										if exitStatus == 0 {
@@ -1968,9 +1982,22 @@ func (c *cli) Run(args []string) int {
 													}
 												}
 
+												if results[7] != "" {
+													// for Claris FileMaker Server 19.5.1 or later
+													if version >= 19.5 {
+														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "parallelbackup")
+														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", parallelbackupenabled: parallelBackupEnabled})
+														if exitStatus != 0 {
+															exitStatus = 10001
+														}
+													} else {
+														exitStatus = 3
+													}
+												}
+
 												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 												settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
-												if startupRestorationBuiltin == true && settings[4] != settingResults[4] {
+												if startupRestorationBuiltin && settings[4] != settingResults[4] {
 													// check setting of startupRestorationEnabled
 													fmt.Println("Restart the FileMaker Server background processes to apply the change.")
 												}
@@ -2284,57 +2311,66 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	startupRestorationEnabled := ""
 	secureFilesOnlyFlag := ""
 	authenticatedStream := ""
+	parallelBackupEnabled := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
-		if regexp.MustCompile(`cachesize=(\d+)`).Match([]byte(val)) == true {
+		if regexp.MustCompile(`cachesize=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`cachesize=(\d+)`)
 			cacheSize = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`hostedfiles=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`hostedfiles=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`hostedfiles=(\d+)`)
 			maxFiles = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`maxfiles=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`maxfiles=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`maxfiles=(\d+)`)
 			maxFiles = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`maxguests=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`maxguests=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`maxguests=(\d+)`)
 			maxProConnections = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`proconnections=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`proconnections=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`proconnections=(\d+)`)
 			maxProConnections = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`allowpsos=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`allowpsos=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`allowpsos=(\d+)`)
 			maxPSOS = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`scriptsessions=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`scriptsessions=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`scriptsessions=(\d+)`)
 			maxPSOS = rep.ReplaceAllString(val, "$1")
-		} else if regexp.MustCompile(`startuprestorationenabled=(.*)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`startuprestorationenabled=(.*)`).Match([]byte(val)) {
 			if strings.ToLower(str[i]) == "startuprestorationenabled=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "startuprestorationenabled=true" || (regexp.MustCompile(`startuprestorationenabled=([+|-])?(\d)+`).Match([]byte(str[i])) == true && str[i] != "startuprestorationenabled=0" && str[i] != "startuprestorationenabled=+0" && str[i] != "startuprestorationenabled=-0") {
+			} else if strings.ToLower(str[i]) == "startuprestorationenabled=true" || (regexp.MustCompile(`startuprestorationenabled=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "startuprestorationenabled=0" && str[i] != "startuprestorationenabled=+0" && str[i] != "startuprestorationenabled=-0") {
 				startupRestorationEnabled = "true"
 			} else {
 				startupRestorationEnabled = "false"
 			}
-		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`requiresecuredb=(.*)`).Match([]byte(val)) {
 			if strings.ToLower(str[i]) == "requiresecuredb=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "requiresecuredb=0" && val != "requiresecuredb=+0" && val != "requiresecuredb=-0") {
+			} else if strings.ToLower(str[i]) == "requiresecuredb=true" || (regexp.MustCompile(`requiresecuredb=([+|-])?(\d)+`).Match([]byte(val)) && val != "requiresecuredb=0" && val != "requiresecuredb=+0" && val != "requiresecuredb=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
-		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`securefilesonly=(.*)`).Match([]byte(val)) {
 			if strings.ToLower(str[i]) == "securefilesonly=" {
 				exitStatus = 10001
-			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(val)) == true && val != "securefilesonly=0" && val != "securefilesonly=+0" && val != "securefilesonly=-0") {
+			} else if strings.ToLower(str[i]) == "securefilesonly=true" || (regexp.MustCompile(`securefilesonly=([+|-])?(\d)+`).Match([]byte(val)) && val != "securefilesonly=0" && val != "securefilesonly=+0" && val != "securefilesonly=-0") {
 				secureFilesOnlyFlag = "true"
 			} else {
 				secureFilesOnlyFlag = "false"
 			}
-		} else if regexp.MustCompile(`authenticatedstream=(\d+)`).Match([]byte(val)) == true {
+		} else if regexp.MustCompile(`authenticatedstream=(\d+)`).Match([]byte(val)) {
 			rep := regexp.MustCompile(`authenticatedstream=(\d+)`)
 			authenticatedStream = rep.ReplaceAllString(val, "$1")
+		} else if regexp.MustCompile(`parallelbackupenabled=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "parallelbackupenabled=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "parallelbackupenabled=true" || (regexp.MustCompile(`parallelbackupenabled=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "parallelbackupenabled=0" && str[i] != "parallelbackupenabled=+0" && str[i] != "parallelbackupenabled=-0") {
+				parallelBackupEnabled = "true"
+			} else {
+				parallelBackupEnabled = "false"
+			}
 		} else {
 			exitStatus = 10001
 		}
@@ -2347,6 +2383,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, startupRestorationEnabled)
 	results = append(results, secureFilesOnlyFlag)
 	results = append(results, authenticatedStream)
+	results = append(results, parallelBackupEnabled)
 
 	return results, exitStatus
 }
@@ -3964,6 +4001,12 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 			// for Claris FileMaker Server 19.3.2 or later
 			d := authenticatedStreamConfigInfo{
 				p.authenticatedstream,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/server/config/parallelbackup") {
+			// for Claris FileMaker Server 19.5.1 or later
+			d := parallelBackupConfigInfo{
+				p.parallelbackupenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin == true {

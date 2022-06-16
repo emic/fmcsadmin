@@ -24,7 +24,7 @@ Features
 - Manage SSL certificates (for FileMaker Server 19.2.1 or later)
 - Move databases out of hosted folder (for FileMaker Server 19.3.1 or later)
 - View and change the setting for sharing streaming URLs (for FileMaker Server 19.3.2 or later)
-- View the server parallel backup setting (for FileMaker Server 19.5.1 or later)
+- View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
 
 Supported Servers
 -----

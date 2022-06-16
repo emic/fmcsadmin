@@ -1579,6 +1579,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
 	 * fmcsadmin set serverprefs AuthenticatedStream=1
 	 * fmcsadmin set serverprefs AuthenticatedStream=2
+	 * fmcsadmin set serverprefs ParallelBackupEnabled=false
+	 * fmcsadmin set serverprefs ParallelBackupEnabled=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100
