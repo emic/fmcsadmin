@@ -1646,13 +1646,15 @@ func TestOutputInvalidCommandErrorMessage(t *testing.T) {
 	assert.Equal(t, 248, status)
 }
 
-func TestGetHostName(t *testing.T) {
+func TestGetBaseURI(t *testing.T) {
 	if runtime.GOOS == "linux" {
-		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
+		assert.Equal(t, "http://127.0.0.1:16001", getBaseURI(""))
 	} else if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
+		assert.Equal(t, "http://127.0.0.1:16001", getBaseURI(""))
 	}
-	assert.Equal(t, "https://example.jp", getHostName("example.jp"))
+	assert.Equal(t, "https://example.jp", getBaseURI("example.jp"))
+	assert.Equal(t, "https://example.jp", getBaseURI("example.jp "))
+	assert.Equal(t, "https://example.jp", getBaseURI(" example.jp"))
 }
 
 func TestGetAPIBasePath(t *testing.T) {

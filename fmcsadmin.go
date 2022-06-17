@@ -176,6 +176,7 @@ type commandOptions struct {
 	forceFlag      bool
 	saveKeyFlag    bool
 	fqdn           string
+	hostname       string
 	username       string
 	password       string
 	key            string
@@ -205,6 +206,7 @@ func (c *cli) Run(args []string) int {
 	saveKeyFlag := false
 	graceTime := 90
 	fqdn := ""
+	hostname := ""
 	username := ""
 	password := ""
 	key := ""
@@ -223,6 +225,7 @@ func (c *cli) Run(args []string) int {
 	commandOptions.forceFlag = false
 	commandOptions.saveKeyFlag = false
 	commandOptions.fqdn = ""
+	commandOptions.hostname = ""
 	commandOptions.username = ""
 	commandOptions.password = ""
 	commandOptions.key = ""
@@ -244,11 +247,11 @@ func (c *cli) Run(args []string) int {
 	// detect an invalid option
 	for i := 0; i < len(args); i++ {
 		var invalidOption bool
-		if regexp.MustCompile(`\-(\d+)`).Match([]byte(args[i])) == true {
+		if regexp.MustCompile(`\-(\d+)`).Match([]byte(args[i])) {
 			// Allow option (ex.: "fmcsadmin get backuptime -1")
 			invalidOption = false
 		} else {
-			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey", "--keyfile", "--KeyFile", "--keyfilepass", "--KeyFilePass", "--intermediateca", "--intermediateCA"}
+			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--host", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey", "--keyfile", "--KeyFile", "--keyfilepass", "--KeyFilePass", "--intermediateca", "--intermediateCA"}
 			for j := 0; j < len(allowedOptions); j++ {
 				if string([]rune(args[i])[:1]) == "-" {
 					invalidOption = true
@@ -260,7 +263,7 @@ func (c *cli) Run(args []string) int {
 							invalidOption = false
 						}
 					}
-					if invalidOption == true {
+					if invalidOption {
 						exitStatus = outputInvalidOptionErrorMessage(c, args[i])
 						return exitStatus
 					}
@@ -286,7 +289,11 @@ func (c *cli) Run(args []string) int {
 	intermediateCA = cFlags.intermediateCA
 
 	fqdn = cFlags.fqdn
-	baseURI := getHostName(fqdn)
+	hostname = cFlags.hostname
+	if len(fqdn) == 0 && len(hostname) > 0 && !strings.Contains(hostname, ".") {
+		fqdn = hostname + ".account.filemaker-cloud.com"
+	}
+	baseURI := getBaseURI(fqdn)
 	u, _ := url.Parse(baseURI)
 
 	usingCloud := false
@@ -2199,6 +2206,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	forceFlag := false
 	saveKeyFlag := false
 	fqdn := ""
+	hostname := ""
 	username := ""
 	password := ""
 	key := ""
@@ -2221,6 +2229,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	flags.BoolVar(&statsFlag, "s", false, "Return FILE or CLIENT stats.")
 	flags.BoolVar(&statsFlag, "stats", false, "Return FILE or CLIENT stats.")
 	flags.StringVar(&fqdn, "fqdn", "", "Specify the Fully Qualified Domain Name of a remote server.")
+	flags.StringVar(&hostname, "host", "", "specify your host name of FileMaker Cloud")
 	flags.StringVar(&username, "u", "", "Username to use to authenticate with the server.")
 	flags.StringVar(&username, "username", "", "Username to use to authenticate with the server.")
 	flags.StringVar(&password, "p", "", "Password to use to authenticate with the server.")
@@ -2261,6 +2270,9 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	cFlags.saveKeyFlag = cFlags.saveKeyFlag || saveKeyFlag
 	if cFlags.fqdn == "" {
 		cFlags.fqdn = fqdn
+	}
+	if cFlags.hostname == "" {
+		cFlags.hostname = hostname
 	}
 	if cFlags.username == "" {
 		cFlags.username = username
@@ -2313,6 +2325,9 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 		cFlags.saveKeyFlag = cFlags.saveKeyFlag || subCommandOptions.saveKeyFlag
 		if cFlags.fqdn == "" {
 			cFlags.fqdn = subCommandOptions.fqdn
+		}
+		if cFlags.hostname == "" {
+			cFlags.hostname = subCommandOptions.hostname
 		}
 		if cFlags.username == "" {
 			cFlags.username = subCommandOptions.username
@@ -2532,7 +2547,7 @@ func outputInvalidOptionErrorMessage(c *cli, option string) int {
 	return exitStatus
 }
 
-func getHostName(fqdn string) string {
+func getBaseURI(fqdn string) string {
 	baseURI := "http://127.0.0.1:16001"
 	if len(fqdn) > 0 {
 		baseURI = "https://" + strings.TrimSpace(fqdn)
