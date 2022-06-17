@@ -67,7 +67,7 @@ func TestRun(t *testing.T) {
 	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin get cwpconfig invalidparameter", " ")
-	status = cli.Run(args)
+	_ = cli.Run(args)
 	expected := "Invalid configuration name: invalidparameter"
 	assert.Contains(t, outStream.String(), expected)
 
@@ -120,7 +120,7 @@ func TestRun(t *testing.T) {
 	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin set cwpconfig invalidparameter=true", " ")
-	status = cli.Run(args)
+	_ = cli.Run(args)
 	expected = "Invalid configuration name: invalidparameter"
 	assert.Contains(t, outStream.String(), expected)
 

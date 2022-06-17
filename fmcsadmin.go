@@ -2547,19 +2547,33 @@ func getAPIBasePath(baseURI string) string {
 	return path
 }
 
-func getUsernameAndPassword(username string, password string) (string, string) {
+func getUsernameAndPassword(username string, password string, product int) (string, string) {
 	if len(username) == 0 {
-		r := bufio.NewReader(os.Stdin)
-		fmt.Print("username: ")
-		input, _ := r.ReadString('\n')
-		username = strings.TrimSpace(input)
+		if product == 1 {
+			username = os.Getenv("FMS_USERNAME")
+		} else {
+			username = os.Getenv("FMC_USERNAME")
+		}
+		if len(username) == 0 {
+			r := bufio.NewReader(os.Stdin)
+			fmt.Print("username: ")
+			input, _ := r.ReadString('\n')
+			username = strings.TrimSpace(input)
+		}
 	}
 
 	if len(password) == 0 {
-		fmt.Print("password: ")
-		bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
-		password = string(bytePassword)
-		fmt.Printf("\n")
+		if product == 1 {
+			password = os.Getenv("FMS_PASSWORD")
+		} else {
+			password = os.Getenv("FMC_PASSWORD")
+		}
+		if len(password) == 0 {
+			fmt.Print("password: ")
+			bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
+			password = string(bytePassword)
+			fmt.Printf("\n")
+		}
 	}
 
 	return username, password
@@ -2570,14 +2584,14 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 	token := ""
 	exitStatus := 0
 
-	username, password := getUsernameAndPassword(user, pass)
-
 	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) {
 		// for Claris FileMaker Cloud
 		exitStatus = 21
-		err = errors.New(fmt.Sprintf("Not Supported"))
+		err = fmt.Errorf("%s", "Not Supported")
 	} else {
 		// for Claris FileMaker Server
+		username, password := getUsernameAndPassword(user, pass, 1)
+
 		u, _ := url.Parse(baseURI)
 		u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
 
