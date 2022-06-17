@@ -9,7 +9,7 @@ Version: 2.0.0 (in development)
 - Update "GET SERVERPREFS" command to check the status of parallel backup for Claris FileMaker Server 19.5.1. (Usage: "fmcsadmin get serverprefs ParallelBackupEnabled")
 - Update "SET SERVERPREFS" command to enable or disable parallel backup for Claris FileMaker Server 19.5.1. (Usage: "fmcsadmin set serverprefs ParallelBackupEnabled=false")
 - Add support for credentials via environment variables (FMS_USERNAME and FMS_PASSWORD).
-- Add an error message for the FileMaker error code 956.
+- Add error messages for the FileMaker error code 956, 1702.
 - Change an error message when specifying the host name of Claris FileMaker Cloud with "--fqdn" option.
 - Tested with Claris FileMaker Server 19.5.
 - Tested on Windows 11 and macOS Monterey 12.

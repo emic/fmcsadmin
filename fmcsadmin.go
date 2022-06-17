@@ -4356,6 +4356,8 @@ func getErrorDescription(errorCode int) string {
 		description = "Parameter is invalid"
 	case 1700:
 		description = "Resource doesn't exist"
+	case 1702:
+		description = "Authentication information wasn't provided in the correct format; verify the value of the Authorization header"
 	case 1708:
 		description = "Parameter value is invalid"
 	case 1713:
