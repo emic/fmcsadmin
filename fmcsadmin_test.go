@@ -1769,15 +1769,17 @@ func TestGetDateTimeStringOfCurrentTimeZone(t *testing.T) {
 		loc = time.FixedZone(location, 9*60*60)
 	}
 	time.Local = loc
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("", "2006/01/02 15:04:05"))
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00", "2006/01/02 15:04:05"))
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00 GMT", "2006/01/02 15:04:05"))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("", "2006/01/02 15:04:05", false))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00", "2006/01/02 15:04:05", false))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00 GMT", "2006/01/02 15:04:05", false))
 
 	//assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05"))
-	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04"))
-	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04:05"))
+	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04", false))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04", true))
+	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04:05", false))
 
 	//assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT"))
-	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04"))
-	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04:05"))
+	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04", false))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04", true))
+	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04:05", false))
 }
