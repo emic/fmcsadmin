@@ -2045,9 +2045,17 @@ func (c *cli) Run(args []string) int {
 													case "requiresecuredb":
 														printOptions = append(printOptions, "requiresecuredb")
 													case "authenticatedstream":
-														printOptions = append(printOptions, "authenticatedstream")
+														if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
+															printOptions = append(printOptions, "authenticatedstream")
+														} else {
+															exitStatus = 3
+														}
 													case "parallelbackupenabled":
-														printOptions = append(printOptions, "parallelbackupenabled")
+														if version >= 19.5 {
+															printOptions = append(printOptions, "parallelbackupenabled")
+														} else {
+															exitStatus = 3
+														}
 													default:
 														exitStatus = 3
 													}

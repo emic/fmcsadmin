@@ -20,6 +20,7 @@ Version: 2.0.0 (in development)
 - [INFO] Drop support for macOS Mojave 10.14.
 - [INFO] Drop support for CentOS Linux 8.
 - [BUG FIX] Improve DNS error handling when using "--fqdn" option.
+- [BUG FIX] Output an error message when using "SET SERVERPREFS" command to set streaming URL cookie check setting with unsupported versions of FileMaker Server. The affected version is 1.3.0 only.
 
 Version: 1.3.0
 Date: August 17, 2021
