@@ -2,7 +2,8 @@ fmcsadmin
 (c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
-Version: 2.0.0 (in development)
+Version: 2.0.0
+Date: June 27, 2022
 - Change to the Apache License, Version 2.0.
 - Support Ubuntu 20.04 LTS.
 - Add "CANCEL" command to cancel the currently running backup for Claris FileMaker Server 19.5.1. (Usage: "fmcsadmin cancel backup")
