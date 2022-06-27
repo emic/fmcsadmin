@@ -67,7 +67,7 @@ func TestRun(t *testing.T) {
 	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin get cwpconfig invalidparameter", " ")
-	status = cli.Run(args)
+	_ = cli.Run(args)
 	expected := "Invalid configuration name: invalidparameter"
 	assert.Contains(t, outStream.String(), expected)
 
@@ -120,7 +120,7 @@ func TestRun(t *testing.T) {
 	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin set cwpconfig invalidparameter=true", " ")
-	status = cli.Run(args)
+	_ = cli.Run(args)
 	expected = "Invalid configuration name: invalidparameter"
 	assert.Contains(t, outStream.String(), expected)
 
@@ -241,6 +241,17 @@ func TestRunWithVersionOption2(t *testing.T) {
 	status := cli.Run(args)
 	assert.Equal(t, 0, status)
 	expected := "fmcsadmin"
+	assert.Contains(t, outStream.String(), expected)
+}
+
+func TestRunCancelCommand(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin cancel", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 248, status)
+	expected := "Error: 11000 (Invalid command)"
 	assert.Contains(t, outStream.String(), expected)
 }
 
@@ -698,6 +709,24 @@ func TestGetFlags(t *testing.T) {
 	flags.graceTime = 90
 
 	/*
+	 * cancel
+	 * Usage: fmcsadmin CANCEL [TYPE]
+	 *
+	 * fmcsadmin cancel backup
+	 * fmcsadmin cancel -y backup
+	 * fmcsadmin --fqdn example.jp cancel backup
+	 * fmcsadmin --fqdn example.jp cancel -y backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME cancel backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME cancel -y backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD cancel backup
+	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD cancel -y backup
+	 */
+	expected = []string{"cancel", "backup"}
+	args = strings.Split("fmcsadmin cancel backup", " ")
+	cmdArgs, resultFlags, _ = getFlags(args, flags)
+	assert.Equal(t, expected, cmdArgs)
+
+	/*
 	 * certificate
 	 * Usage: fmcsadmin CERTIFICATE [CERT_OP] [options] [NAME] [FILE]
 	 *
@@ -1121,6 +1150,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs maxguests maxfiles
 	 * fmcsadmin get serverprefs maxfiles maxguests
 	 * fmcsadmin get serverprefs AuthenticatedStream
+	 * fmcsadmin get serverprefs ParallelBackupEnabled
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1578,6 +1608,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
 	 * fmcsadmin set serverprefs AuthenticatedStream=1
 	 * fmcsadmin set serverprefs AuthenticatedStream=2
+	 * fmcsadmin set serverprefs ParallelBackupEnabled=false
+	 * fmcsadmin set serverprefs ParallelBackupEnabled=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100
@@ -1614,13 +1646,15 @@ func TestOutputInvalidCommandErrorMessage(t *testing.T) {
 	assert.Equal(t, 248, status)
 }
 
-func TestGetHostName(t *testing.T) {
+func TestGetBaseURI(t *testing.T) {
 	if runtime.GOOS == "linux" {
-		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
+		assert.Equal(t, "http://127.0.0.1:16001", getBaseURI(""))
 	} else if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		assert.Equal(t, "http://127.0.0.1:16001", getHostName(""))
+		assert.Equal(t, "http://127.0.0.1:16001", getBaseURI(""))
 	}
-	assert.Equal(t, "https://example.jp", getHostName("example.jp"))
+	assert.Equal(t, "https://example.jp", getBaseURI("example.jp"))
+	assert.Equal(t, "https://example.jp", getBaseURI("example.jp "))
+	assert.Equal(t, "https://example.jp", getBaseURI(" example.jp"))
 }
 
 func TestGetAPIBasePath(t *testing.T) {
@@ -1735,15 +1769,17 @@ func TestGetDateTimeStringOfCurrentTimeZone(t *testing.T) {
 		loc = time.FixedZone(location, 9*60*60)
 	}
 	time.Local = loc
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("", "2006/01/02 15:04:05"))
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00", "2006/01/02 15:04:05"))
-	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00 GMT", "2006/01/02 15:04:05"))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("", "2006/01/02 15:04:05", false))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00", "2006/01/02 15:04:05", false))
+	assert.Equal(t, "", getDateTimeStringOfCurrentTimeZone("0000-00-00 00:00:00 GMT", "2006/01/02 15:04:05", false))
 
 	//assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05"))
-	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04"))
-	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04:05"))
+	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04", false))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04", true))
+	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02T15:04:05", "2006/01/02 15:04:05", false))
 
 	//assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT"))
-	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04"))
-	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04:05"))
+	assert.Equal(t, "2006/01/02 15:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04", false))
+	assert.Equal(t, "2006/01/03 00:04", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04", true))
+	assert.Equal(t, "2006/01/02 15:04:05", getDateTimeStringOfCurrentTimeZone("2006-01-02 15:04:05 GMT", "2006/01/02 15:04:05", false))
 }

@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: ['1.16']
+        go: ['1.18']
     steps:
 
     - uses: actions/setup-go@v2
@@ -65,16 +65,4 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
         asset_name: fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
-        asset_content_type: application/zip
-
-    - name: Upload Release Asset for Windows (x32)
-      id: upload-release-asset-for-windows-x32
-      uses: actions/upload-release-asset@v1.0.2
-      if: startsWith(github.ref, 'refs/tags/')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-windows-x32.zip
-        asset_name: fmcsadmin-${{ steps.version.outputs.version }}-windows-x32.zip
         asset_content_type: application/zip

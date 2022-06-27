@@ -1,1 +1,1 @@
-fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Server and Claris FileMaker Cloud for AWS 1.18 via Claris FileMaker Admin API.
+fmcsadmin is the command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API.
