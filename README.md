@@ -29,7 +29,7 @@ Features
 
 Supported Servers
 -----
-- Claris FileMaker Server 19 (19.1, 19.2, 19.3, 19.4, 19.5)
+- Claris FileMaker Server 19 (19.2, 19.3, 19.4, 19.5, 19.6)
 
 Usage
 -----

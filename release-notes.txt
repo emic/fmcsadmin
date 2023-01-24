@@ -1,6 +1,14 @@
 fmcsadmin
-(c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2023 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
+
+Version: 2.1.0 (in development)
+- Tested with Claris FileMaker Server 19.6.
+- Tested on macOS Ventura 13.
+- Built with Go 1.19.
+- [INFO] Drop support for Claris FileMaker Server 19.0 and 19.1.
+- [INFO] Drop support for macOS Catalina 10.15.
+- [INFO] Drop support for Windows 10 Version 21H1.
 
 Version: 2.0.0
 Date: June 27, 2022
