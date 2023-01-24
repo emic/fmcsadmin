@@ -5,6 +5,7 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 Version: 2.1.0 (in development)
 - Tested with Claris FileMaker Server 19.6.
 - Tested on macOS Ventura 13.
+- Fix spelling in help messages.
 - Built with Go 1.19.
 - [INFO] Drop support for Claris FileMaker Server 19.0 and 19.1.
 - [INFO] Drop support for macOS Catalina 10.15.

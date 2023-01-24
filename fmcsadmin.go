@@ -4484,7 +4484,7 @@ var helpTextTemplate = `Usage: fmcsadmin [options] [COMMAND]
 
 Description: 
     fmcsadmin is a command line tool to administer the Database Server 
-    component of Calris FileMaker Server via Claris FileMaker Admin API.
+    component of Claris FileMaker Server via Claris FileMaker Admin API.
 
     You can script many tasks with fmcsadmin by using a scripting language 
     that allows execution of shell or terminal commands.
