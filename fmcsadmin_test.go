@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -220,6 +220,15 @@ func TestRunWithHelpOption2(t *testing.T) {
 	assert.Equal(t, 0, status)
 	expected := "Usage: fmcsadmin [options] [COMMAND]"
 	assert.Contains(t, outStream.String(), expected)
+}
+
+func TestRunWithIdentityFileOption(t *testing.T) {
+	outStream, errStream := new(bytes.Buffer), new(bytes.Buffer)
+	cli := &cli{outStream: outStream, errStream: errStream}
+
+	args := strings.Split("fmcsadmin -i notexist.pub list files", " ")
+	status := cli.Run(args)
+	assert.Equal(t, 20405, status)
 }
 
 func TestRunWithVersionOption1(t *testing.T) {
@@ -609,7 +618,7 @@ func TestRunCloseCommand1(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "{\"response\": {\"token\": \"ACCESSTOKEN\", \"totalDBCount\": 1, \"clients\": [], \"databases\": [{\"id\": \"1\", \"filename\": \"TestDB.fmp12\", \"status\": \"NORMAL\", \"folder\": \"filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/Sample/\", \"decryptHint\": \"\"}]}, \"messages\": [{\"code\": \"0\"}]}")
 			if strings.Contains(r.URL.Path, "/fmi/admin/api/v2/databases/") {
-				request, _ := ioutil.ReadAll(r.Body)
+				request, _ := io.ReadAll(r.Body)
 				if strings.Contains(string([]byte(request)), "\"status\":\"CLOSED\"") {
 					assert.Equal(t, "{\"status\":\"CLOSED\",\"messageText\":\"TESTMESSAGE\",\"force\":false}", string([]byte(request)))
 				}
@@ -650,7 +659,7 @@ func TestRunOpenCommand1(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "{\"response\": {\"token\": \"ACCESSTOKEN\", \"totalDBCount\": 1, \"clients\": [], \"databases\": [{\"id\": \"1\", \"filename\": \"TestDB.fmp12\", \"status\": \"CLOSED\", \"folder\": \"filemac:/Macintosh HD/Library/FileMaker Server/Data/Databases/Sample/\", \"decryptHint\": \"\"}]}, \"messages\": [{\"code\": \"0\"}]}")
 			if strings.Contains(r.URL.Path, "/fmi/admin/api/v2/databases/") {
-				request, _ := ioutil.ReadAll(r.Body)
+				request, _ := io.ReadAll(r.Body)
 				if strings.Contains(string([]byte(request)), "\"status\":\"OPENED\"") {
 					assert.Equal(t, "{\"status\":\"OPENED\",\"key\":\"\",\"saveKey\":false}", string([]byte(request)))
 				}

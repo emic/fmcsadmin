@@ -6,7 +6,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -27,7 +28,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,6 +41,7 @@ import (
 	"syscall"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/mattn/go-scan"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/term"
@@ -143,7 +144,6 @@ type params struct {
 	key                       string
 	messageText               string
 	force                     bool
-	gracetime                 int
 	retry                     int
 	status                    string
 	enabled                   string
@@ -167,6 +167,7 @@ type params struct {
 	privateKey                string
 	intermediateCertificates  string
 	printRefreshToken         bool
+	identityFile              string
 }
 
 type commandOptions struct {
@@ -187,6 +188,7 @@ type commandOptions struct {
 	intermediateCA string
 	clientID       int
 	graceTime      int
+	identityFile   string
 }
 
 func main() {
@@ -217,6 +219,7 @@ func (c *cli) Run(args []string) int {
 	keyFilePassOption := false
 	keyFilePass := ""
 	intermediateCA := ""
+	identityFile := ""
 
 	commandOptions := commandOptions{}
 	commandOptions.helpFlag = false
@@ -236,6 +239,7 @@ func (c *cli) Run(args []string) int {
 	commandOptions.intermediateCA = ""
 	commandOptions.clientID = -1
 	commandOptions.graceTime = 90
+	commandOptions.identityFile = ""
 
 	// detect an invalid command
 	cmdArgs, cFlags, err := getFlags(args, commandOptions)
@@ -252,7 +256,7 @@ func (c *cli) Run(args []string) int {
 			// Allow option (ex.: "fmcsadmin get backuptime -1")
 			invalidOption = false
 		} else {
-			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "--help", "--version", "--yes", "--stats", "--fqdn", "--host", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey", "--keyfile", "--KeyFile", "--keyfilepass", "--KeyFilePass", "--intermediateca", "--intermediateCA"}
+			allowedOptions := []string{"-h", "-v", "-y", "-s", "-u", "-p", "-m", "-f", "-c", "-t", "-i", "--help", "--version", "--yes", "--stats", "--fqdn", "--host", "--username", "--password", "--key", "--message", "--force", "--client", "--gracetime", "--savekey", "--keyfile", "--KeyFile", "--keyfilepass", "--KeyFilePass", "--intermediateca", "--intermediateCA"}
 			for j := 0; j < len(allowedOptions); j++ {
 				if string([]rune(args[i])[:1]) == "-" {
 					invalidOption = true
@@ -288,6 +292,7 @@ func (c *cli) Run(args []string) int {
 	keyFile = cFlags.keyFile
 	keyFilePass = cFlags.keyFilePass
 	intermediateCA = cFlags.intermediateCA
+	identityFile = cFlags.identityFile
 
 	fqdn = cFlags.fqdn
 	hostname = cFlags.hostname
@@ -326,7 +331,7 @@ func (c *cli) Run(args []string) int {
 						}
 
 						if running {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								version := getServerVersion(u.String(), token)
 								if !usingCloud && version >= 19.5 {
@@ -341,7 +346,7 @@ func (c *cli) Run(args []string) int {
 									exitStatus = outputInvalidCommandErrorMessage(c)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						} else {
@@ -369,7 +374,7 @@ func (c *cli) Run(args []string) int {
 						}
 
 						if running {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								version := getServerVersion(u.String(), token)
 								if version >= 19.2 {
@@ -401,7 +406,7 @@ func (c *cli) Run(args []string) int {
 									exitStatus = outputInvalidCommandErrorMessage(c)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						} else {
@@ -418,7 +423,7 @@ func (c *cli) Run(args []string) int {
 							res = strings.ToLower(strings.TrimSpace(input))
 						}
 						if res == "y" {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 								version := getServerVersion(u.String(), token)
@@ -428,7 +433,7 @@ func (c *cli) Run(args []string) int {
 
 										// reading certificate
 										var crt *x509.Certificate
-										certificateData, err := ioutil.ReadFile(cmdArgs[2])
+										certificateData, err := os.ReadFile(cmdArgs[2])
 										if err != nil {
 											if os.IsPermission(err) {
 												exitStatus = 20402
@@ -465,7 +470,7 @@ func (c *cli) Run(args []string) int {
 										// reading private key
 										if exitStatus == 0 {
 											if keyFile != "" {
-												keyFileData, err = ioutil.ReadFile(keyFile)
+												keyFileData, err = os.ReadFile(keyFile)
 												if err != nil {
 													if os.IsPermission(err) {
 														exitStatus = 20402
@@ -528,7 +533,7 @@ func (c *cli) Run(args []string) int {
 										intermediateCAExpired := false
 										if exitStatus == 0 {
 											if intermediateCA != "" {
-												intermediateCAData, err = ioutil.ReadFile(intermediateCA)
+												intermediateCAData, err = os.ReadFile(intermediateCA)
 												if err != nil {
 													if os.IsPermission(err) {
 														exitStatus = 20402
@@ -597,7 +602,7 @@ func (c *cli) Run(args []string) int {
 									exitStatus = outputInvalidCommandErrorMessage(c)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						}
@@ -612,7 +617,7 @@ func (c *cli) Run(args []string) int {
 							res = strings.ToLower(strings.TrimSpace(input))
 						}
 						if res == "y" {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 								version := getServerVersion(u.String(), token)
@@ -629,7 +634,7 @@ func (c *cli) Run(args []string) int {
 									exitStatus = outputInvalidCommandErrorMessage(c)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						}
@@ -651,7 +656,7 @@ func (c *cli) Run(args []string) int {
 				res = strings.ToLower(strings.TrimSpace(input))
 			}
 			if res == "y" {
-				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+				token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 				if token != "" && exitStatus == 0 && err == nil {
 					u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 					args = []string{""}
@@ -676,7 +681,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 10904
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+				} else if detectHostUnreachable(exitStatus) {
 					exitStatus = 10502
 				}
 			}
@@ -694,7 +699,7 @@ func (c *cli) Run(args []string) int {
 						res = strings.ToLower(strings.TrimSpace(input))
 					}
 					if res == "y" {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
@@ -721,7 +726,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = 10600
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -743,7 +748,7 @@ func (c *cli) Run(args []string) int {
 						res = strings.ToLower(strings.TrimSpace(input))
 					}
 					if res == "y" {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
@@ -763,7 +768,7 @@ func (c *cli) Run(args []string) int {
 								exitStatus = 10600
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -787,7 +792,7 @@ func (c *cli) Run(args []string) int {
 						res = strings.ToLower(strings.TrimSpace(input))
 					}
 					if res == "y" {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
@@ -802,7 +807,7 @@ func (c *cli) Run(args []string) int {
 							if id > -1 && exitStatus == 0 {
 								if id == 0 {
 									// disconnect clients
-									exitStatus, err = disconnectAllClient(u, baseURI, token, message, graceTime)
+									exitStatus, _ = disconnectAllClient(u, baseURI, token, message, graceTime)
 								} else {
 									// check the client connection
 									u.Path = path.Join(getAPIBasePath(baseURI), "clients")
@@ -821,7 +826,7 @@ func (c *cli) Run(args []string) int {
 										// disconnect a client
 										u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(id))
 										u.RawQuery = "messageText=" + url.QueryEscape(message) + "&graceTime=" + url.QueryEscape(strconv.Itoa(graceTime))
-										exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
+										exitStatus, _, _ = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
 									} else {
 										exitStatus = 11005
 									}
@@ -831,7 +836,7 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -843,7 +848,7 @@ func (c *cli) Run(args []string) int {
 			}
 		case "enable":
 			if len(cmdArgs[1:]) > 0 {
-				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+				token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 				if token != "" && exitStatus == 0 && err == nil {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "schedule":
@@ -868,7 +873,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = 11002
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+				} else if detectHostUnreachable(exitStatus) {
 					exitStatus = 10502
 				}
 			} else {
@@ -881,7 +886,7 @@ func (c *cli) Run(args []string) int {
 					if usingCloud {
 						exitStatus = 21
 					} else {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							id := 0
 							if len(cmdArgs) >= 3 {
@@ -893,7 +898,7 @@ func (c *cli) Run(args []string) int {
 							u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 							exitStatus = getBackupTime(u.String(), token, id)
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -926,7 +931,7 @@ func (c *cli) Run(args []string) int {
 						}
 
 						if exitStatus == 0 {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								printOptions := []string{}
 								if len(cmdArgs[2:]) > 0 {
@@ -965,20 +970,20 @@ func (c *cli) Run(args []string) int {
 									}
 								}
 								if exitStatus == 0 {
-									_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+									_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						}
 					}
 				case "refreshtoken":
 					if usingCloud {
-						token, exitStatus, err = login(baseURI, username, password, params{printRefreshToken: true, retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{printRefreshToken: true, retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					} else {
@@ -1007,7 +1012,7 @@ func (c *cli) Run(args []string) int {
 						}
 
 						if exitStatus == 0 {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								printOptions := []string{}
 								if len(cmdArgs[2:]) > 0 {
@@ -1042,7 +1047,7 @@ func (c *cli) Run(args []string) int {
 									_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						}
@@ -1071,7 +1076,7 @@ func (c *cli) Run(args []string) int {
 					}
 
 					if exitStatus == 0 {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							var versionString string
 							var version float64
@@ -1167,7 +1172,7 @@ func (c *cli) Run(args []string) int {
 							}
 
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -1236,7 +1241,7 @@ func (c *cli) Run(args []string) int {
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "clients":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						id := -1
 						if statsFlag {
@@ -1245,11 +1250,11 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "clients")
 						exitStatus = listClients(u.String(), token, id)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				case "files":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						idList := []int{-1}
 						if statsFlag {
@@ -1258,14 +1263,14 @@ func (c *cli) Run(args []string) int {
 						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 						exitStatus = listFiles(c, u.String(), token, idList)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				case "plugins":
 					if usingCloud {
 						exitStatus = 21
 					} else {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
 							version := getServerVersion(u.String(), token)
@@ -1275,7 +1280,7 @@ func (c *cli) Run(args []string) int {
 							} else {
 								var running string
 								u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
-								exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+								_, running, _ = sendRequest("GET", u.String(), token, params{})
 								if running == "STOPPED" {
 									exitStatus = 10502
 								} else {
@@ -1283,17 +1288,17 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
 				case "schedules":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
 						exitStatus = listSchedules(u.String(), token, 0)
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				default:
@@ -1303,7 +1308,7 @@ func (c *cli) Run(args []string) int {
 				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "open":
-			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
@@ -1351,11 +1356,11 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+			} else if detectHostUnreachable(exitStatus) {
 				exitStatus = 10502
 			}
 		case "pause":
-			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
@@ -1378,7 +1383,7 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+			} else if detectHostUnreachable(exitStatus) {
 				exitStatus = 10502
 			}
 		case "remove":
@@ -1392,7 +1397,7 @@ func (c *cli) Run(args []string) int {
 				res = strings.ToLower(strings.TrimSpace(input))
 			}
 			if res == "y" {
-				token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+				token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 				if token != "" && exitStatus == 0 && err == nil {
 					var version float64
 					if !usingCloud {
@@ -1434,7 +1439,7 @@ func (c *cli) Run(args []string) int {
 						exitStatus = outputInvalidCommandErrorMessage(c)
 					}
 					logout(baseURI, token)
-				} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+				} else if detectHostUnreachable(exitStatus) {
 					exitStatus = 10502
 				}
 			}
@@ -1455,20 +1460,20 @@ func (c *cli) Run(args []string) int {
 					if res == "y" {
 						switch strings.ToLower(cmdArgs[1]) {
 						case "server":
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								// stop database server
 								if forceFlag {
 									graceTime = 0
 								}
-								exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
+								exitStatus, _ = stopDatabaseServer(u, baseURI, token, message, graceTime)
 								if exitStatus == 0 {
-									exitStatus, err = waitStoppingServer(u, baseURI, token)
+									_, _ = waitStoppingServer(u, baseURI, token)
 									// start database server
-									exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
+									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						default:
@@ -1480,7 +1485,7 @@ func (c *cli) Run(args []string) int {
 				}
 			}
 		case "resume":
-			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
 				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
 				args = []string{""}
@@ -1503,14 +1508,14 @@ func (c *cli) Run(args []string) int {
 					exitStatus = 10904
 				}
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+			} else if detectHostUnreachable(exitStatus) {
 				exitStatus = 10502
 			}
 		case "run":
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "schedule":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						id := 0
 						if len(cmdArgs) >= 3 {
@@ -1537,7 +1542,7 @@ func (c *cli) Run(args []string) int {
 							exitStatus = 10600
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				default:
@@ -1547,11 +1552,11 @@ func (c *cli) Run(args []string) int {
 				exitStatus = outputInvalidCommandErrorMessage(c)
 			}
 		case "send":
-			token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
 				exitStatus = sendMessages(u, baseURI, token, message, cmdArgs, clientID)
 				logout(baseURI, token)
-			} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+			} else if detectHostUnreachable(exitStatus) {
 				exitStatus = 10502
 			}
 		case "set":
@@ -1588,7 +1593,7 @@ func (c *cli) Run(args []string) int {
 							}
 
 							if exitStatus == 0 {
-								token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+								token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 								if token != "" && exitStatus == 0 && err == nil {
 									var settings []string
 									printOptions := []string{}
@@ -1714,17 +1719,17 @@ func (c *cli) Run(args []string) int {
 												}
 
 												u.Path = path.Join(getAPIBasePath(baseURI), "xml", "config")
-												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
+												_, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
 											}
 
-											_, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+											_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
 											if restartMessageFlag {
 												fmt.Fprintln(c.outStream, "Restart the FileMaker Server background processes to apply the change.")
 											}
 										}
 									}
 									logout(baseURI, token)
-								} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+								} else if detectHostUnreachable(exitStatus) {
 									exitStatus = 10502
 								}
 							}
@@ -1760,7 +1765,7 @@ func (c *cli) Run(args []string) int {
 						}
 
 						if exitStatus == 0 {
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								var settings []int
 								printOptions := []string{}
@@ -1878,7 +1883,7 @@ func (c *cli) Run(args []string) int {
 									}
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						}
@@ -1909,7 +1914,7 @@ func (c *cli) Run(args []string) int {
 					}
 
 					if exitStatus == 0 {
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							var versionString string
 							var version float64
@@ -2137,7 +2142,7 @@ func (c *cli) Run(args []string) int {
 							}
 
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					}
@@ -2154,20 +2159,20 @@ func (c *cli) Run(args []string) int {
 				if len(cmdArgs[1:]) > 0 {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "server":
-						token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							var running string
 							u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
-							exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
+							_, running, _ = sendRequest("GET", u.String(), token, params{})
 							if running == "RUNNING" {
 								// Service already running
 								exitStatus = 10006
 							} else {
 								// start database server
-								exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
+								exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 							}
 							logout(baseURI, token)
-						} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+						} else if detectHostUnreachable(exitStatus) {
 							exitStatus = 10502
 						}
 					default:
@@ -2181,7 +2186,7 @@ func (c *cli) Run(args []string) int {
 			if len(cmdArgs[1:]) > 0 {
 				switch strings.ToLower(cmdArgs[1]) {
 				case "client":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						id := 0
 						if len(cmdArgs) >= 3 {
@@ -2195,11 +2200,11 @@ func (c *cli) Run(args []string) int {
 							exitStatus = listClients(u.String(), token, id)
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				case "file":
-					token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						if len(cmdArgs[2:]) > 0 {
 							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
@@ -2211,7 +2216,7 @@ func (c *cli) Run(args []string) int {
 							exitStatus = 10001
 						}
 						logout(baseURI, token)
-					} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+					} else if detectHostUnreachable(exitStatus) {
 						exitStatus = 10502
 					}
 				default:
@@ -2237,19 +2242,19 @@ func (c *cli) Run(args []string) int {
 					if res == "y" {
 						switch strings.ToLower(cmdArgs[1]) {
 						case "server":
-							token, exitStatus, err = login(baseURI, username, password, params{retry: retry})
+							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
 								message = "Stopping FileMaker Database Engine..."
 								// message = "FileMaker データベースエンジンの停止中..."
 								if forceFlag {
 									graceTime = 0
 								}
-								exitStatus, err = stopDatabaseServer(u, baseURI, token, message, graceTime)
+								exitStatus, _ = stopDatabaseServer(u, baseURI, token, message, graceTime)
 								if exitStatus == 0 {
-									exitStatus, err = waitStoppingServer(u, baseURI, token)
+									exitStatus, _ = waitStoppingServer(u, baseURI, token)
 								}
 								logout(baseURI, token)
-							} else if exitStatus != 9 && exitStatus != 21 && exitStatus != 956 {
+							} else if detectHostUnreachable(exitStatus) {
 								exitStatus = 10502
 							}
 						default:
@@ -2301,6 +2306,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	intermediateCA := ""
 	clientID := -1
 	graceTime := 90
+	identityFile := ""
 
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.Usage = func() {}
@@ -2335,6 +2341,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	flags.BoolVar(&saveKeyFlag, "savekey", false, "Save the database encryption password.")
 	flags.IntVar(&graceTime, "t", 90, "Specify time in seconds before client is forced to disconnect.")
 	flags.IntVar(&graceTime, "gracetime", 90, "Specify time in seconds before client is forced to disconnect.")
+	flags.StringVar(&identityFile, "i", "", "Specify a private key file for FileMaker Admin API PKI Authentication.")
 
 	buf := &bytes.Buffer{}
 	flags.SetOutput(buf)
@@ -2385,6 +2392,9 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	}
 	if cFlags.graceTime == 90 {
 		cFlags.graceTime = graceTime
+	}
+	if cFlags.identityFile == "" {
+		cFlags.identityFile = identityFile
 	}
 
 	cmdArgs = flags.Args()
@@ -2440,6 +2450,9 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 		}
 		if cFlags.graceTime == 90 {
 			cFlags.graceTime = subCommandOptions.graceTime
+		}
+		if cFlags.identityFile == "" {
+			cFlags.identityFile = subCommandOptions.identityFile
 		}
 	}
 
@@ -2680,6 +2693,7 @@ func getUsernameAndPassword(username string, password string, product int) (stri
 }
 
 func login(baseURI string, user string, pass string, p params) (string, int, error) {
+	var body []byte
 	var err error
 	token := ""
 	exitStatus := 0
@@ -2690,13 +2704,26 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 		err = fmt.Errorf("%s", "Not Supported")
 	} else {
 		// for Claris FileMaker Server
-		username, password := getUsernameAndPassword(user, pass, 1)
+		username := user
+		password := pass
+		if p.identityFile == "" {
+			username, password = getUsernameAndPassword(user, pass, 1)
+		}
 
 		u, _ := url.Parse(baseURI)
 		u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
 
 		output := output{}
-		body, _, err := callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
+		if p.identityFile == "" {
+			body, _, err = callURL("POST", u.String(), "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)), nil)
+		} else {
+			var jwtToken string
+			jwtToken, exitStatus, err = getJWTToken(p.identityFile)
+			if err != nil || exitStatus > 0 {
+				return token, exitStatus, err
+			}
+			body, _, _ = callURL("POST", u.String(), "PKI "+jwtToken, nil)
+		}
 
 		/* for debugging */
 		//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -2723,7 +2750,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 		} else {
 			if p.retry > 0 {
 				fmt.Println("fmcsadmin: Permission denied, please try again.")
-				token, exitStatus, err = login(baseURI, user, pass, params{retry: p.retry - 1})
+				token, exitStatus, err = login(baseURI, user, pass, params{retry: p.retry - 1, identityFile: p.identityFile})
 				if err != nil {
 					exitStatus = 10502
 					return token, exitStatus, err
@@ -2736,6 +2763,114 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 	}
 
 	return token, exitStatus, err
+}
+
+func getJWTToken(filePath string) (string, int, error) {
+	// for public key infrastructure (PKI) authentication
+	var err error
+	var pkey *rsa.PrivateKey
+	passphrase := ""
+
+	keyData, keyFormat, exitStatus := detectPrivateKeyFormat(filePath, "")
+	if exitStatus != 0 && exitStatus != 212 {
+		return "", exitStatus, nil
+	}
+
+	if exitStatus == 212 {
+		fmt.Print("Enter passphrase: ")
+		bytePassphrase, _ := term.ReadPassword(int(syscall.Stdin))
+		passphrase = string(bytePassphrase)
+		fmt.Printf("\n")
+		keyData, _, exitStatus = detectPrivateKeyFormat(filePath, passphrase)
+	} else if keyFormat == "PRIVATE KEY" || keyFormat == "EC PRIVATE KEY" || keyFormat == "EC PARAMETERS" {
+		exitStatus = 21
+		return "", exitStatus, nil
+	}
+
+	// Name of public key on FileMaker Server Admin Console
+	keyName := strings.Replace(filepath.Base(filePath), filepath.Ext(filePath), "", 1)
+
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"iss": strings.Replace(keyName, "_", " ", -1),
+		"aud": "fmsadminapi",
+		"exp": time.Now().Add(time.Minute * 15).Unix(),
+	})
+
+	if passphrase == "" {
+		pkey, err = jwt.ParseRSAPrivateKeyFromPEM([]byte(keyData))
+		if err != nil {
+			exitStatus = 20408
+			return "", exitStatus, err
+		}
+	} else {
+		pkey, err = jwt.ParseRSAPrivateKeyFromPEMWithPassword([]byte(keyData), passphrase)
+		if err != nil {
+			exitStatus = 20408
+			return "", exitStatus, err
+		}
+	}
+	tokenString, _ := jwtToken.SignedString(pkey)
+
+	return tokenString, exitStatus, err
+}
+
+func detectPrivateKeyFormat(filePath string, keyFilePass string) ([]byte, string, int) {
+	keyType := ""
+	exitStatus := 0
+
+	_, err := os.Stat(filePath)
+	if err != nil {
+		exitStatus = 20405
+	}
+
+	keyData, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsPermission(err) {
+			exitStatus = 20402
+		} else {
+			exitStatus = 20405
+		}
+	} else {
+		block, _ := pem.Decode(keyData)
+		if block == nil {
+			exitStatus = 20408
+		} else {
+			buf := block.Bytes
+			if x509.IsEncryptedPEMBlock(block) {
+				buf, err = x509.DecryptPEMBlock(block, []byte(keyFilePass))
+				if err != nil {
+					if err == x509.IncorrectPasswordError {
+						exitStatus = 212
+					}
+				}
+			}
+
+			if exitStatus == 0 {
+				switch block.Type {
+				case "RSA PRIVATE KEY":
+					_, err = x509.ParsePKCS1PrivateKey(buf)
+					if err != nil {
+						exitStatus = 20408
+					}
+				case "PRIVATE KEY":
+					_, err := x509.ParsePKCS8PrivateKey(buf)
+					if err != nil {
+						exitStatus = 20408
+					}
+				case "EC PRIVATE KEY":
+					_, err := x509.ParseECPrivateKey(buf)
+					if err != nil {
+						exitStatus = 20408
+					}
+				default:
+					exitStatus = 20408
+				}
+				keyType = block.Type
+			}
+		}
+	}
+
+	return keyData, keyType, exitStatus
 }
 
 func logout(baseURI string, token string) {
@@ -2807,18 +2942,18 @@ func listClients(urlString string, token string, id int) int {
 	var data [][]string
 	var sID int
 
-	err = scan.ScanTree(v, "/response/clients", &c)
+	_ = scan.ScanTree(v, "/response/clients", &c)
 	count = len(c)
 
 	if mode == "NORMAL" {
 		if count > 0 {
 			for i := 0; i < count; i++ {
-				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
+				_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
 				if s == "NORMAL" {
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
 					data = append(data, []string{s1, userName, computerName, extPriv})
 				}
 			}
@@ -2835,21 +2970,21 @@ func listClients(urlString string, token string, id int) int {
 	} else {
 		if count > 0 {
 			for i := 0; i < count; i++ {
-				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
+				_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/status", &s)
 				if s == "NORMAL" {
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/ipaddress", &ipAddress)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/macaddress", &macAddress)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectTime", &connectTime)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectDuration", &connectDuration)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appVersion", &appVersion)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appLanguage", &appLanguage)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/filename", &fileName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/accountName", &accountName)
-					err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/privsetName", &privsetName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/id", &s1)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/userName", &userName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/computerName", &computerName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/extpriv", &extPriv)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/ipaddress", &ipAddress)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/macaddress", &macAddress)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectTime", &connectTime)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/connectDuration", &connectDuration)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appVersion", &appVersion)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/appLanguage", &appLanguage)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/filename", &fileName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/accountName", &accountName)
+					_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(i)+"]/guestFiles[0]/privsetName", &privsetName)
 
 					connectTime = getDateTimeStringOfCurrentTimeZone(connectTime, "2006/01/02 15:04:05", usingCloud)
 					if regexp.MustCompile(`(.*)\.fmp12`).Match([]byte(fileName)) {
@@ -2919,35 +3054,35 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 	var b bool
 	var data [][]string
 
-	err = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
+	_ = scan.ScanTree(v, "/response/totalDBCount", &totalDbCount)
 
 	if mode == "NORMAL" {
 		for i := 0; i < totalDbCount; i++ {
-			err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &s)
+			_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &s)
 			if s == "NORMAL" {
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/folder", &s)
 				fmt.Fprint(c.outStream, s)
-				err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s)
+				_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &s)
 				fmt.Fprintln(c.outStream, s)
 			}
 		}
 	} else {
 		for i := 0; i < totalDbCount; i++ {
-			err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &s1)
+			_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/id", &s1)
 			for j := 0; j < len(idList); j++ {
 				if s1 == strconv.Itoa(idList[j]) || idList[j] == 0 {
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &fileName)
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/clients", &num1)
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/size", &num2)
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &status)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/filename", &fileName)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/clients", &num1)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/size", &num2)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/status", &status)
 
 					if status == "CLOSED" {
 						extPriv = "-"
 					} else {
 						extPriv = ""
-						err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges", &count)
+						_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges", &count)
 						for j := 0; j < len(count); j++ {
-							err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges["+strconv.Itoa(j)+"]", &s)
+							_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/enabledExtPrivileges["+strconv.Itoa(j)+"]", &s)
 							if extPriv == "" {
 								extPriv = s
 							} else {
@@ -2957,7 +3092,7 @@ func listFiles(c *cli, url string, token string, idList []int) int {
 					}
 
 					isEncrypted = ""
-					err = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/isEncrypted", &b)
+					_ = scan.ScanTree(v, "/response/databases["+strconv.Itoa(i)+"]/isEncrypted", &b)
 					if b {
 						isEncrypted = "Yes"
 					} else {
@@ -3062,15 +3197,15 @@ func listPlugins(url string, token string) int {
 	var status string
 	var data [][]string
 
-	err = scan.ScanTree(v, "/response/plugins", &c)
+	_ = scan.ScanTree(v, "/response/plugins", &c)
 	count = len(c)
 
 	if count > 0 {
 		for i := 0; i < count; i++ {
-			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/id", &s1)
-			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/pluginName", &pluginName)
-			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/filename", &fileName)
-			err = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/enabled", &enabled)
+			_ = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/id", &s1)
+			_ = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/pluginName", &pluginName)
+			_ = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/filename", &fileName)
+			_ = scan.ScanTree(v, "/response/plugins["+strconv.Itoa(i)+"]/enabled", &enabled)
 			status = "Disabled"
 			if enabled {
 				status = "Enabled"
@@ -3139,13 +3274,13 @@ func listSchedules(urlString string, token string, id int) int {
 	var status string
 	var data [][]string
 
-	err = scan.ScanTree(v, "/response/schedules", &c)
+	_ = scan.ScanTree(v, "/response/schedules", &c)
 	count = len(c)
 
 	if count > 0 {
 		for i := 0; i < count; i++ {
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
 			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/backupType/resourceType", &backupType)
 			if err != nil {
 				backupType = ""
@@ -3178,11 +3313,11 @@ func listSchedules(urlString string, token string, id int) int {
 			if err != nil {
 				nextRun = ""
 			}
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
-			if enabled == false {
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
+			if !enabled {
 				nextRun = "Disabled"
 			}
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
 
 			sID, _ = strconv.Atoi(s1)
 			if id == sID || id == 0 {
@@ -3251,8 +3386,8 @@ func getScheduleName(url string, token string, id int) string {
 	var sID int
 	var name string
 
-	err = scan.ScanTree(v, "/response/schedule/id", &s1)
-	err = scan.ScanTree(v, "/response/schedule/name", &name)
+	_ = scan.ScanTree(v, "/response/schedule/id", &s1)
+	_ = scan.ScanTree(v, "/response/schedule/name", &name)
 	sID, _ = strconv.Atoi(s1)
 	if id == sID || id == 0 {
 		return name
@@ -3293,6 +3428,9 @@ func sendMessage(url string, token string, message string) int {
 	}
 	jsonStr, _ := json.Marshal(d)
 	body, _, err := callURL("POST", url, token, bytes.NewBuffer([]byte(jsonStr)))
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	/* for debugging */
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -3474,26 +3612,26 @@ func getClients(url string, token string, arg []string, status string) []int {
 			}
 		}
 
-		err = scan.ScanTree(v, "/response/clients", &clients)
+		_ = scan.ScanTree(v, "/response/clients", &clients)
 		for j := 0; j < len(clients); j++ {
-			err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles", &guestFiles)
+			_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles", &guestFiles)
 			for k := 0; k < len(guestFiles); k++ {
-				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileID)
-				err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileName)
+				_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileID)
+				_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(j)+"]/guestFiles["+strconv.Itoa(k)+"]/filename", &guestFileName)
 				if len(folderName) == 0 {
 					if fileName == "" || comparePath(fileName, guestFileName) {
-						err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
+						_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
 						id, _ = strconv.Atoi(clientID)
 						idList = append(idList, id)
 					}
 				} else {
-					err = scan.ScanTree(v, "/files/files", &files)
+					_ = scan.ScanTree(v, "/files/files", &files)
 					for l := 0; k < len(files); l++ {
-						err = scan.ScanTree(v, "/files/files["+strconv.Itoa(k)+"]/id", &fileID)
-						err = scan.ScanTree(v, "/files/files["+strconv.Itoa(k)+"]/folder", &directory)
+						_ = scan.ScanTree(v, "/files/files["+strconv.Itoa(k)+"]/id", &fileID)
+						_ = scan.ScanTree(v, "/files/files["+strconv.Itoa(k)+"]/folder", &directory)
 						if fileID == guestFileID {
 							if comparePath(fileName, directory+guestFileName) {
-								err = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
+								_ = scan.ScanTree(v, "/response/clients["+strconv.Itoa(k)+"]/id", &clientID)
 								id, _ = strconv.Atoi(clientID)
 								idList = append(idList, id)
 							}
@@ -3534,10 +3672,10 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 		return settings, 3
 	}
 	result, _ = strconv.Atoi(resultCode)
-	err = scan.ScanTree(v, "/response/cacheSize", &cacheSize)
-	err = scan.ScanTree(v, "/response/maxFiles", &maxFiles)
-	err = scan.ScanTree(v, "/response/maxProConnections", &maxProConnections)
-	err = scan.ScanTree(v, "/response/maxPSOS", &maxPSOS)
+	_ = scan.ScanTree(v, "/response/cacheSize", &cacheSize)
+	_ = scan.ScanTree(v, "/response/maxFiles", &maxFiles)
+	_ = scan.ScanTree(v, "/response/maxProConnections", &maxProConnections)
+	_ = scan.ScanTree(v, "/response/maxPSOS", &maxPSOS)
 	startupRestorationBuiltin := true
 	err = scan.ScanTree(v, "/response/startupRestorationEnabled", &startupRestorationEnabled)
 	if err != nil {
@@ -3639,10 +3777,10 @@ func getServerSecurityConfigurations(urlString string, token string, printOption
 		return 3
 	}
 	result, _ = strconv.Atoi(resultCode)
-	err = scan.ScanTree(v, "/response/requireSecureDB", &requireSecureDB)
+	_ = scan.ScanTree(v, "/response/requireSecureDB", &requireSecureDB)
 
 	requireSecureDBStr = "true"
-	if requireSecureDB == false {
+	if !requireSecureDB {
 		requireSecureDBStr = "false"
 	}
 
@@ -3773,25 +3911,25 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	if err != nil {
 		return settings, 3, err
 	}
-	result, _ = strconv.Atoi(resultCode)
-	err = scan.ScanTree(v, "/response/enabled", &enabledPhp)
-	err = scan.ScanTree(v, "/response/characterEncoding", &characterEncoding)
-	err = scan.ScanTree(v, "/response/errorMessageLanguage", &errorMessageLanguage)
-	err = scan.ScanTree(v, "/response/dataPreValidation", &dataPreValidation)
-	err = scan.ScanTree(v, "/response/useFileMakerPhp", &useFileMakerPhp)
+	_, _ = strconv.Atoi(resultCode)
+	_ = scan.ScanTree(v, "/response/enabled", &enabledPhp)
+	_ = scan.ScanTree(v, "/response/characterEncoding", &characterEncoding)
+	_ = scan.ScanTree(v, "/response/errorMessageLanguage", &errorMessageLanguage)
+	_ = scan.ScanTree(v, "/response/dataPreValidation", &dataPreValidation)
+	_ = scan.ScanTree(v, "/response/useFileMakerPhp", &useFileMakerPhp)
 
 	enabledPhpStr = "true"
-	if enabledPhp == false {
+	if !enabledPhp {
 		enabledPhpStr = "false"
 	}
 
 	dataPreValidationStr = "true"
-	if dataPreValidation == false {
+	if !dataPreValidation {
 		dataPreValidationStr = "false"
 	}
 
 	useFileMakerPhpStr = "true"
-	if useFileMakerPhp == false {
+	if !useFileMakerPhp {
 		useFileMakerPhpStr = "false"
 	}
 
@@ -3817,7 +3955,7 @@ func getWebTechnologyConfigurations(baseURI string, basePath string, token strin
 	err = scan.ScanTree(v, "/response/enabled", &enabledXML)
 
 	enabledXMLStr = "true"
-	if enabledXML == false {
+	if !enabledXML {
 		enabledXMLStr = "false"
 	}
 
@@ -3884,7 +4022,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 	var err error
 
 	// disconnect clients
-	exitStatus, err = disconnectAllClient(u, baseURI, token, message, graceTime)
+	_, _ = disconnectAllClient(u, baseURI, token, message, graceTime)
 
 	// close databases
 	u.Path = path.Join(getAPIBasePath(baseURI), "databases")
@@ -3895,7 +4033,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 			if graceTime == 0 {
 				forceFlag = true
 			}
-			exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "close", messageText: message, force: forceFlag})
+			_, _, _ = sendRequest("PATCH", u.String(), token, params{command: "close", messageText: message, force: forceFlag})
 		}
 	}
 
@@ -3966,13 +4104,13 @@ func getBackupTime(urlString string, token string, id int) int {
 	var status string
 	var data [][]string
 
-	err = scan.ScanTree(v, "/response/schedules", &c)
+	_ = scan.ScanTree(v, "/response/schedules", &c)
 	count = len(c)
 
 	if count > 0 {
 		for i := 0; i < count; i++ {
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/id", &s1)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/name", &name)
 			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/backupType/resourceType", &backupType)
 			if err != nil {
 				backupType = ""
@@ -4001,11 +4139,11 @@ func getBackupTime(urlString string, token string, id int) int {
 			if err != nil {
 				nextRun = ""
 			}
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
-			if enabled == false {
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/enabled", &enabled)
+			if !enabled {
 				nextRun = "Disabled"
 			}
-			err = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
+			_ = scan.ScanTree(v, "/response/schedules["+strconv.Itoa(i)+"]/status", &status)
 
 			sID, _ = strconv.Atoi(s1)
 			if id == sID || id == 0 {
@@ -4048,7 +4186,7 @@ func getBackupTime(urlString string, token string, id int) int {
 
 func getVolumeName() string {
 	if runtime.GOOS == "darwin" {
-		files, err := ioutil.ReadDir("/Volumes/")
+		files, err := os.ReadDir("/Volumes/")
 		if err != nil {
 			return ""
 		}
@@ -4191,7 +4329,7 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 				p.startuprestorationenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
-		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin == false {
+		} else if strings.HasSuffix(urlString, "/server/config/general") && !p.startuprestorationbuiltin {
 			// for Claris FileMaker Server 19.1.2 or later
 			d := generalConfigInfo{
 				p.cachesize,
@@ -4303,7 +4441,7 @@ func callURL(method string, urlString string, token string, request io.Reader) (
 		req.Header.Set("Content-Length", "0")
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if len(token) >= 5 && (token[:5] == "FMID " || token[:6] == "Basic ") {
+	if len(token) >= 5 && (token[:5] == "FMID " || token[:6] == "Basic " || token[:4] == "PKI ") {
 		req.Header.Set("Authorization", token)
 	} else {
 		req.Header.Set("Authorization", "Bearer "+strings.Replace(strings.Replace(token, "\n", "", -1), "\r", "", -1))
@@ -4321,7 +4459,7 @@ func callURL(method string, urlString string, token string, request io.Reader) (
 		return []byte(""), res.StatusCode, err
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 
 	// for debugging
 	//fmt.Println(bytes.NewBuffer([]byte(body)))
@@ -4332,6 +4470,25 @@ func callURL(method string, urlString string, token string, request io.Reader) (
 	}
 
 	return body, res.StatusCode, err
+}
+
+func detectHostUnreachable(exitStatus int) bool {
+	switch exitStatus {
+	case 9:
+		return false
+	case 21:
+		return false
+	case 956:
+		return false
+	case 20402:
+		return false
+	case 20405:
+		return false
+	case 20408:
+		return false
+	default:
+		return true
+	}
 }
 
 func getErrorDescription(errorCode int) string {
@@ -4560,6 +4717,7 @@ General Options:
     --fqdn                     Specify the Fully Qualified Domain Name (FQDN)
                                of a remote server via HTTPS.
     -h, --help                 Print this page.
+    -i IDENTITYFILE            Specify a private key file for PKI Authentication.
     -p pass, --password pass   Password to use to authenticate with the server.
     -u user, --username user   Username to use to authenticate with the server.
     -v, --version              Print version information.
