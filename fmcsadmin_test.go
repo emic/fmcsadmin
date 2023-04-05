@@ -1609,7 +1609,14 @@ func TestGetFlags(t *testing.T) {
 	 * Usage: fmcsadmin SET CONFIG_TYPE [NAME1=VALUE1 NAME2=VALUE2 ...]
 	 *
 	 * fmcsadmin set serverconfig hostedfiles=125 scriptsessions=100
+	 * fmcsadmin set cwpconfig enablephp=true
 	 * fmcsadmin set cwpconfig enablexml=true
+	 * fmcsadmin set cwpconfig encoding=UTF-8
+	 * fmcsadmin set cwpconfig encoding=ISO-8859-1
+	 * fmcsadmin set cwpconfig locale=en
+	 * fmcsadmin set cwpconfig locale=ja
+	 * fmcsadmin set cwpconfig prevalidation=false
+	 * fmcsadmin set cwpconfig enablephp=true usefmphp=false
 	 * fmcsadmin set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME set cwpconfig enablephp=true usefmphp=true
