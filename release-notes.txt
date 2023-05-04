@@ -10,7 +10,7 @@ Version: 2.1.0 (in development)
 - Tested on macOS Ventura 13.
 - Fix spelling in help messages.
 - Built with Go 1.19.
-- [INFO] Drop support for Claris FileMaker Server 19.0 and 19.1.
+- [INFO] Drop support for Claris FileMaker Server 19.0, 19.1 and 19.2.
 - [INFO] Drop support for macOS Catalina 10.15.
 - [INFO] Drop support for Windows 10 Version 21H1.
 - [BUG FIX] Fix causing unintended changes of the configuration settings for unspecified options in some cases when using "SET CWPCONFIG" command.
