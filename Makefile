@@ -1,5 +1,5 @@
 NAME=fmcsadmin
-VERSION=2.0.0
+VERSION=2.1.0
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -18,6 +18,7 @@ DIST_WINDOWS_DIR=$(NAME)-$(VERSION)-$(WINDOWS_DIR)
 all: test build
 
 deps:
+	$(GOGET) github.com/golang-jwt/jwt/v4
 	$(GOINSTALL) github.com/mattn/go-scan
 	$(GOINSTALL) github.com/olekukonko/tablewriter
 	$(GOINSTALL) golang.org/x/term

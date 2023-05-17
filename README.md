@@ -26,10 +26,11 @@ Features
 - View and change the setting for sharing streaming URLs (for FileMaker Server 19.3.2 or later)
 - Cancel the currently running backup (for FileMaker Server 19.5.1 or later)
 - View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
+- FileMaker Admin API PKI Authentication (for FileMaker Server 19.6.1 or later)
 
 Supported Servers
 -----
-- Claris FileMaker Server 19 (19.1, 19.2, 19.3, 19.4, 19.5)
+- Claris FileMaker Server 19 (19.3, 19.4, 19.5, 19.6)
 
 Usage
 -----
@@ -50,8 +51,8 @@ Note: Handling schedule ID 1 is not supported for FileMaker Server.
 System Requirements
 -----
 - Linux version   : Ubuntu 18.04 LTS, Ubuntu 20.04 LTS or CentOS Linux 7
-- macOS version   : macOS Catalina 10.15.7 or later (tested on macOS Monterey 12)
-- Windows version : Windows 10 Version 21H1 or later (tested on Windows 11)
+- macOS version   : macOS Big Sur 11 or later (tested on macOS Ventura 13)
+- Windows version : Windows 10 Version 21H2 or later (tested on Windows 11)
 
 Download
 -----

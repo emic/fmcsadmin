@@ -1,6 +1,20 @@
 fmcsadmin
-(c) 2017-2022 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2023 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
+
+Version: 2.1.0
+Date: May 17, 2023
+- Add "-i" option to specify a private key file for FileMaker Admin API PKI Authentication (requires Claris FileMaker Server 19.6.1 or later).
+- Update behavior of "GET CWPCONFIG" command and "SET CWPCONFIG" command on Linux for FileMaker Server 19.6.1 or later.
+- Detect an invalid configuration value when using "SET CWPCONFIG" command.
+- Tested with Claris FileMaker Server 19.6.
+- Tested on macOS Ventura 13.
+- Fix spelling in help messages.
+- Built with Go 1.19.
+- [INFO] Drop support for Claris FileMaker Server 19.0, 19.1 and 19.2.
+- [INFO] Drop support for macOS Catalina 10.15.
+- [INFO] Drop support for Windows 10 Version 21H1.
+- [BUG FIX] Fix causing unintended changes of the configuration settings for unspecified options in some cases when using "SET CWPCONFIG" command.
 
 Version: 2.0.0
 Date: June 27, 2022
