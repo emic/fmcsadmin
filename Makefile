@@ -1,5 +1,5 @@
 NAME=fmcsadmin
-VERSION=2.1.1-dev
+VERSION=2.2.0-dev
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
