@@ -3,7 +3,7 @@ fmcsadmin
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
 Version: 2.2.0 (in development)
--
+- Tested with Claris FileMaker Server 2023 (20.1).
 
 Version: 2.1.0
 Date: May 17, 2023
