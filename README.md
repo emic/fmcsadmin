@@ -60,7 +60,7 @@ Noteworthy Options
 
 System Requirements
 -----
-- Linux version   : Ubuntu 18.04 LTS, Ubuntu 20.04 LTS or CentOS Linux 7
+- Linux version   : Ubuntu 20.04 LTS or CentOS Linux 7
 - macOS version   : macOS Big Sur 11 or later (tested on macOS Ventura 13)
 - Windows version : Windows 10 Version 21H2 or later (tested on Windows 11)
 
