@@ -49,6 +49,15 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
 ```
 Note: Handling schedule ID 1 is not supported for FileMaker Server.
 
+Noteworthy Options
+-----
+- --fqdn (for remote server administration)
+- -i (for PKI authentication)
+
+```
+    fmcsadmin --fqdn fms.example.com -i /path/to/IDENTITYFILE list files
+```
+
 System Requirements
 -----
 - Linux version   : Ubuntu 18.04 LTS, Ubuntu 20.04 LTS or CentOS Linux 7
