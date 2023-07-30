@@ -4263,7 +4263,7 @@ func comparePath(name1 string, name2 string) bool {
 		return true
 	}
 
-	if strings.Contains(name1, string(os.PathSeparator)) || strings.Contains(name2, string(os.PathSeparator)) {
+	if strings.Contains(name1, filepath.ToSlash(string(os.PathSeparator))) || strings.Contains(name2, filepath.ToSlash(string(os.PathSeparator))) {
 		for i := 0; i < len(pathPrefix); i++ {
 			if pathPrefix[i] == "filemac:" && (strings.Contains(name1, pathPrefix[i]) || strings.Contains(name2, pathPrefix[i])) {
 				name1 = strings.Replace(name1, "/Volumes", pathPrefix[i], 1)
