@@ -26,6 +26,20 @@ jobs:
 
     - run: go build -ldflags "-X main.version=2.2.0-dev" fmcsadmin.go
 
+    - run: echo "goss_commit_hash=0cae03bf1d1a9003447583e4e81ffbeaf9876ad0" >> "$GITHUB_ENV" # v0.3.23
+
+    - if: runner.os == 'Linux'
+      run: |
+           curl -L "https://github.com/goss-org/goss/archive/${{ env.goss_commit_hash }}.tar.gz" -o goss.tar.gz
+           tar xzvf goss.tar.gz
+           cd "goss-${{ env.goss_commit_hash }}"
+           make build
+           cd ..
+
+    - if: runner.os == 'Linux'
+      run: |
+           "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate
+
     - run: ./fmcsadmin -v
 
 # based on: github.com/koron-go/_skeleton/.github/workflows/go.yml

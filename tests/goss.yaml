@@ -1,0 +1,6 @@
+command:
+  number_of_users:
+    exec: "./fmcsadmin -v"
+    exit-status: 0
+    stdout:
+      - "2.2.0-dev"
