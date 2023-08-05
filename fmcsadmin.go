@@ -1059,7 +1059,7 @@ func (c *cli) Run(args []string) int {
 								case "maxguests", "maxfiles", "cachesize", "allowpsos", "requiresecuredb":
 								case "startuprestorationenabled":
 									startupRestoration = true
-								case "authenticatedstream", "parallelbackupenabled":
+								case "authenticatedstream", "parallelbackupenabled", "persistcacheenabled":
 								default:
 									exitStatus = 3
 								}
@@ -1106,6 +1106,8 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "authenticatedstream")
 										case "parallelbackupenabled":
 											printOptions = append(printOptions, "parallelbackupenabled")
+										case "persistcacheenabled":
+											printOptions = append(printOptions, "persistcacheenabled")
 										default:
 											exitStatus = 3
 										}
@@ -1125,6 +1127,9 @@ func (c *cli) Run(args []string) int {
 									}
 									if !usingCloud && version >= 19.5 {
 										printOptions = append(printOptions, "parallelbackupenabled")
+									}
+									if !usingCloud && version >= 20.1 {
+										printOptions = append(printOptions, "persistcacheenabled")
 									}
 								}
 
@@ -1934,7 +1939,7 @@ func (c *cli) Run(args []string) int {
 								option := rep.ReplaceAllString(cmdArgs[2:][i], "$1")
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
-								case "authenticatedstream", "parallelbackupenabled":
+								case "authenticatedstream", "parallelbackupenabled", "persistcacheenabled":
 								default:
 									exitStatus = 3
 								}
@@ -3786,6 +3791,12 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 					getParallelBackupSetting(strings.Replace(urlString, "/general", "/parallelbackup", 1), token, []string{option})
 				}
 			}
+
+			if option == "persistcacheenabled" {
+				if version >= 20.1 {
+					getPersistCacheSetting(strings.Replace(urlString, "/general", "/persistentcache", 1), token, []string{option})
+				}
+			}
 		}
 	}
 
@@ -3910,6 +3921,47 @@ func getParallelBackupSetting(urlString string, token string, printOptions []str
 	}
 
 	return parallelBackupEnabled, result, err
+}
+
+func getPersistCacheSetting(urlString string, token string, printOptions []string) (bool, int, error) {
+	var resultCode string
+	var result int
+	var persistCacheEnabled bool
+	var persistCacheEnabledStr string
+
+	body, _, err := callURL("GET", urlString, token, nil)
+	if err != nil {
+		return false, 10502, err
+	}
+
+	var v interface{}
+	err = json.Unmarshal(body, &v)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
+	if err != nil {
+		return false, 3, err
+	}
+	result, _ = strconv.Atoi(resultCode)
+	err = scan.ScanTree(v, "/response/persistentCache", &persistCacheEnabled)
+
+	persistCacheEnabledStr = "false"
+	if persistCacheEnabled {
+		persistCacheEnabledStr = "true"
+	}
+
+	// output
+	if result == 0 {
+		for _, option := range printOptions {
+			if option == "persistcacheenabled" {
+				fmt.Println("PersistCacheEnabled = " + persistCacheEnabledStr + " [default: false] ")
+			}
+		}
+	}
+
+	return persistCacheEnabled, result, err
 }
 
 func getWebTechnologyConfigurations(baseURI string, basePath string, token string, printOptions []string) ([]string, int, error) {
