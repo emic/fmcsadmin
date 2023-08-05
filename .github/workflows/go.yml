@@ -24,6 +24,8 @@ jobs:
 
     - run: go test
 
-    - run: go build
+    - run: go build -ldflags "-X main.version=2.2.0-dev" fmcsadmin.go
+
+    - run: ./fmcsadmin -v
 
 # based on: github.com/koron-go/_skeleton/.github/workflows/go.yml
