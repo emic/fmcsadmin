@@ -1,5 +1,5 @@
 command:
-  number_of_users:
+  version:
     exec: "./fmcsadmin -v"
     exit-status: 0
     stdout:

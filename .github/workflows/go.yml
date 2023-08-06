@@ -26,9 +26,11 @@ jobs:
 
     - run: go build -ldflags "-X main.version=2.2.0-dev" fmcsadmin.go
 
-    - run: echo "goss_commit_hash=592be239279ccb18e71a0f7b90abdf4a9091294b" >> "$GITHUB_ENV" # v0.4.0-dev
+    - shell: bash
+      run: echo "goss_commit_hash=592be239279ccb18e71a0f7b90abdf4a9091294b" >> "$GITHUB_ENV" # v0.4.0-dev
 
-    - if: runner.os == 'macOS'
+    - if: runner.os == 'macOS' || runner.os == 'Windows'
+      shell: bash
       run: echo "GOSS_USE_ALPHA=1" >> "$GITHUB_ENV"
 
     - if: runner.os == 'Linux' || runner.os == 'macOS'
@@ -39,13 +41,27 @@ jobs:
            make build
            cd ..
 
+    - if: runner.os == 'Windows'
+      shell: bash
+      run: |
+           curl -L "https://github.com/goss-org/goss/archive/${{ env.goss_commit_hash }}.tar.gz" -o goss.tar.gz
+           tar xzvf goss.tar.gz
+           cd "goss-${{ env.goss_commit_hash }}"
+           go build -o goss.exe github.com/goss-org/goss/cmd/goss
+           cd ..
+
     - if: runner.os == 'Linux'
       run: |
-           "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate
+           "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'macOS'
       run: |
-           "./goss-${{ env.goss_commit_hash }}/release/goss-alpha-darwin-amd64" --gossfile tests/goss.yaml validate
+           "./goss-${{ env.goss_commit_hash }}/release/goss-alpha-darwin-amd64" --gossfile tests/goss.yaml validate --format documentation
+
+    - if: runner.os == 'Windows'
+      shell: bash
+      run: |
+           "./goss-${{ env.goss_commit_hash }}/goss.exe" --gossfile tests/goss-win.yaml validate --format documentation
 
     - run: ./fmcsadmin -v
 
