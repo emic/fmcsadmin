@@ -60,7 +60,7 @@ Noteworthy Options
 
 System Requirements
 -----
-- Linux version   : Ubuntu 20.04 LTS, Ubuntu 22.04 LTS or CentOS Linux 7
+- Linux version   : Ubuntu 20.04 LTS (amd64), Ubuntu 22.04 LTS, Ubuntu 22.04 LTS for ARM or CentOS Linux 7
 - macOS version   : macOS Big Sur 11, macOS Monterey 12 or macOS Ventura 13
 - Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2 or Windows 11
 

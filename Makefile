@@ -8,10 +8,12 @@ GOGET=$(GOCMD) get
 GOINSTALL=$(GOCMD) install
 DIST_DIR=dist
 LINUX_DIR=linux
+LINUX_ARM64_DIR=linux-arm64
 MACOS_DIR=macos
 MACOS_ALT_DIR=macos-alt
 WINDOWS_DIR=windows-x64
 DIST_LINUX_DIR=$(NAME)-$(VERSION)-$(LINUX_DIR)
+DIST_LINUX_ARM64_DIR=$(NAME)-$(VERSION)-$(LINUX_ARM64_DIR)
 DIST_MACOS_DIR=$(NAME)-$(VERSION)-$(MACOS_DIR)
 DIST_WINDOWS_DIR=$(NAME)-$(VERSION)-$(WINDOWS_DIR)
 
@@ -31,11 +33,15 @@ test: deps
 clean:
 	@rm -rf $(DIST_DIR)
 
-build: build-linux build-macos build-windows
+build: build-linux build-linux-arm64 build-macos build-windows
 
 build-linux:
 	mkdir -p $(DIST_DIR)/$(LINUX_DIR)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -ldflags "-X main.version=$(VERSION)" -o $(DIST_DIR)/$(LINUX_DIR)/$(NAME)
+
+build-linux-arm64:
+	mkdir -p $(DIST_DIR)/$(LINUX_ARM64_DIR)
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 $(GOBUILD) -ldflags "-X main.version=$(VERSION)" -o $(DIST_DIR)/$(LINUX_ARM64_DIR)/$(NAME)
 
 ifeq ($(shell uname -m),x86_64)
 build-macos:
@@ -70,6 +76,15 @@ dist-multiplatform: deps build
 	cp -p ../README.md $(DIST_LINUX_DIR)/ && \
 	cp -p ../release-notes.txt $(DIST_LINUX_DIR)/ && \
 	tar -zcf $(DIST_LINUX_DIR).tar.gz $(DIST_LINUX_DIR) && \
+	cd ..
+
+	cd $(DIST_DIR) && \
+	mv $(LINUX_ARM64_DIR) $(DIST_LINUX_ARM64_DIR) && \
+	cp -p ../LICENSE.txt $(DIST_LINUX_ARM64_DIR)/ && \
+	cp -p ../NOTICE.txt $(DIST_LINUX_ARM64_DIR)/ && \
+	cp -p ../README.md $(DIST_LINUX_ARM64_DIR)/ && \
+	cp -p ../release-notes.txt $(DIST_LINUX_ARM64_DIR)/ && \
+	tar -zcf $(DIST_LINUX_ARM64_DIR).tar.gz $(DIST_LINUX_ARM64_DIR) && \
 	cd ..
 
 	cd $(DIST_DIR) && \
