@@ -24,7 +24,13 @@ jobs:
 
     - run: go test
 
-    - run: go build -ldflags "-X main.version=2.2.0-dev" fmcsadmin.go
+    - shell: bash
+      run: echo "fmcsadmin_version=2.2.0-dev" >> "$GITHUB_ENV"
+
+    - run: go build -ldflags "-X main.version=${{ env.fmcsadmin_version }}" fmcsadmin.go
+
+    - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
+      run: make build-linux-arm64
 
     - shell: bash
       run: echo "goss_commit_hash=32aae7649678efb2270b0644350ab007abe96c40" >> "$GITHUB_ENV" # v0.4.0-rc.3
@@ -66,5 +72,18 @@ jobs:
            "./goss-${{ env.goss_commit_hash }}/release/goss-windows-amd64.exe" --gossfile tests/goss-win.yaml validate --format documentation
 
     - run: ./fmcsadmin -v
+
+    - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
+      name: Set up QEMU
+      uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2.2.0
+
+    - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
+      run: |
+           docker run --rm --env GOSS_COMMIT_HASH=${{ env.goss_commit_hash }} -i -v /$(pwd):/tmp arm64v8/ubuntu:22.04 bash <<'EOF'
+           cd /tmp
+           cp -p ./dist/linux-arm64/fmcsadmin ./fmcsadmin
+           "./goss-$GOSS_COMMIT_HASH/release/goss-linux-arm64" --gossfile tests/goss.yaml validate --format documentation
+           ./fmcsadmin -v
+           EOF
 
 # based on: github.com/koron-go/_skeleton/.github/workflows/go.yml
