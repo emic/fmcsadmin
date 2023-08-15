@@ -29,6 +29,9 @@ jobs:
 
     - run: go build -ldflags "-X main.version=${{ env.fmcsadmin_version }}" fmcsadmin.go
 
+    - if: runner.os == 'macOS'
+      run: make dist && cp -p "dist/fmcsadmin-${{ env.fmcsadmin_version }}-macos/fmcsadmin" .
+
     - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
       run: make build-linux-arm64
 
@@ -60,16 +63,16 @@ jobs:
 
     - if: runner.os == 'Linux'
       run: |
-           "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
+           OS=linux "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'macOS'
       run: |
-           "./goss-${{ env.goss_commit_hash }}/release/goss-darwin-amd64" --gossfile tests/goss.yaml validate --format documentation
+           OS=darwin "./goss-${{ env.goss_commit_hash }}/release/goss-darwin-amd64" --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'Windows'
       shell: bash
       run: |
-           "./goss-${{ env.goss_commit_hash }}/release/goss-windows-amd64.exe" --gossfile tests/goss-win.yaml validate --format documentation
+           OS=windows "./goss-${{ env.goss_commit_hash }}/release/goss-windows-amd64.exe" --gossfile tests/goss.yaml validate --format documentation
 
     - run: ./fmcsadmin -v
 

@@ -1,5 +1,0 @@
-command:
-  version:
-    exec: "fmcsadmin.exe -v"
-    exit-status: 0
-    stdout: "fmcsadmin 2.2.0-dev\n"
