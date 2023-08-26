@@ -36,7 +36,7 @@ jobs:
       run: make build-linux-arm64
 
     - shell: bash
-      run: echo "goss_commit_hash=32aae7649678efb2270b0644350ab007abe96c40" >> "$GITHUB_ENV" # v0.4.0-rc.3
+      run: echo "goss_commit_hash=7e70e27fd419534b2a208af8eea1747af5658e01" >> "$GITHUB_ENV" # v0.4.0
 
     - if: runner.os == 'macOS' || runner.os == 'Windows'
       shell: bash
