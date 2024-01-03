@@ -1,5 +1,5 @@
 fmcsadmin
-(c) 2017-2023 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2024 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
 Version: 2.2.0 (in development)
