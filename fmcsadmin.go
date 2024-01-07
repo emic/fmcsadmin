@@ -91,12 +91,6 @@ type parallelBackupConfigInfo struct {
 	ParallelBackupEnabled bool `json:"parallelBackupEnabled"`
 }
 
-/*
-type persistentCacheConfigInfo struct {
-	PersistCacheEnabled bool `json:"persistentCache"`
-}
-*/
-
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -1067,7 +1061,7 @@ func (c *cli) Run(args []string) int {
 								case "startuprestorationenabled":
 									startupRestoration = true
 								case "authenticatedstream", "parallelbackupenabled":
-								case "persistcacheenabled":
+								case "persistcacheenabled", "syncpersistcache":
 								default:
 									exitStatus = 3
 								}
@@ -1116,6 +1110,8 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "parallelbackupenabled")
 										case "persistcacheenabled":
 											printOptions = append(printOptions, "persistcacheenabled")
+										case "syncpersistcache":
+											printOptions = append(printOptions, "syncpersistcache")
 										default:
 											exitStatus = 3
 										}
@@ -1138,6 +1134,7 @@ func (c *cli) Run(args []string) int {
 									}
 									if !usingCloud && version >= 20.1 {
 										printOptions = append(printOptions, "persistcacheenabled")
+										printOptions = append(printOptions, "syncpersistcache")
 									}
 								}
 
@@ -1178,7 +1175,7 @@ func (c *cli) Run(args []string) int {
 										}
 									}
 
-									if option == "persistcacheenabled" {
+									if option == "persistcacheenabled" || option == "syncpersistcache" {
 										if usingCloud {
 											// for Claris FileMaker Cloud
 											exitStatus = 3
@@ -1960,7 +1957,7 @@ func (c *cli) Run(args []string) int {
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
 								case "authenticatedstream", "parallelbackupenabled":
-								//case "persistcacheenabled":
+								//case "persistcacheenabled", "syncpersistcache":
 								default:
 									exitStatus = 3
 								}
@@ -2060,6 +2057,11 @@ func (c *cli) Run(args []string) int {
 										if results[8] == "true" {
 											persistCacheEnabled = true
 										}
+
+										syncPersistCacheEnabled := false
+										if results[9] == "true" {
+											syncPersistCacheEnabled = true
+										}
 									*/
 
 									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" || results[7] != "" {
@@ -2138,6 +2140,13 @@ func (c *cli) Run(args []string) int {
 															} else {
 																exitStatus = 3
 															}
+
+														case "syncpersistcache":
+															if version >= 20.1 {
+																printOptions = append(printOptions, "syncpersistcache")
+															} else {
+																exitStatus = 3
+															}
 													*/
 													default:
 														exitStatus = 3
@@ -2163,6 +2172,7 @@ func (c *cli) Run(args []string) int {
 											/*
 												if version >= 20.1 {
 													printOptions = append(printOptions, "persistcacheenabled")
+													printOptions = append(printOptions, "syncpersistcache")
 												}
 											*/
 										}
@@ -2211,21 +2221,6 @@ func (c *cli) Run(args []string) int {
 														exitStatus = 3
 													}
 												}
-
-												/*
-													if results[8] != "" {
-														// for Claris FileMaker Server 20.1.1 or later
-														if version >= 20.1 {
-															u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "persistentcache")
-															exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", persistcacheenabled: persistCacheEnabled})
-															if exitStatus != 0 {
-																exitStatus = 10001
-															}
-														} else {
-															exitStatus = 3
-														}
-													}
-												*/
 
 												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
 												settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
@@ -2568,7 +2563,6 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	secureFilesOnlyFlag := ""
 	authenticatedStream := ""
 	parallelBackupEnabled := ""
-	// persistCacheEnabled := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2651,7 +2645,6 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, secureFilesOnlyFlag)
 	results = append(results, authenticatedStream)
 	results = append(results, parallelBackupEnabled)
-	//results = append(results, persistCacheEnabled)
 
 	return results, exitStatus
 }
@@ -3859,7 +3852,7 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 				}
 			}
 
-			if option == "persistcacheenabled" {
+			if option == "persistcacheenabled" || option == "syncpersistcache" {
 				if version >= 20.1 {
 					getServerSettingAsBool(strings.Replace(urlString, "/general", "/persistentcache", 1), token, []string{option})
 				}
@@ -3910,6 +3903,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 	var result int
 	var enabled bool
 	var enabledStr string
+	var syncPersistCacheEnabled bool
+	var syncPersistCacheEnabledStr string
 
 	body, _, err := callURL("GET", urlString, token, nil)
 	if err != nil {
@@ -3939,6 +3934,11 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 		err = scan.ScanTree(v, "/response/parallelBackupEnabled", &enabled)
 	} else if u.Path == path.Join(getAPIBasePath(urlString), "server", "config", "persistentcache") {
 		err = scan.ScanTree(v, "/response/persistentCache", &enabled)
+		_ = scan.ScanTree(v, "/response/persistentCacheSync", &syncPersistCacheEnabled)
+		syncPersistCacheEnabledStr = "false"
+		if syncPersistCacheEnabled {
+			syncPersistCacheEnabledStr = "true"
+		}
 	}
 
 	enabledStr = "false"
@@ -3958,6 +3958,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 				fmt.Println("ParallelBackupEnabled = " + enabledStr + " [default: false] ")
 			case "persistcacheenabled":
 				fmt.Println("PersistCacheEnabled = " + enabledStr + " [default: false] ")
+			case "syncpersistcache":
+				fmt.Println("SyncPersistCache = " + syncPersistCacheEnabledStr + " [default: false] ")
 			default:
 			}
 		}
@@ -4418,14 +4420,6 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 				p.parallelbackupenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
-			/*
-				} else if strings.HasSuffix(urlString, "/server/config/persistentcache") {
-					// for Claris FileMaker Server 20.1.1 or later
-					d := persistentCacheConfigInfo{
-						p.persistcacheenabled,
-					}
-					jsonStr, _ = json.Marshal(d)
-			*/
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin {
 			d := generalOldConfigInfo{
 				p.cachesize,
