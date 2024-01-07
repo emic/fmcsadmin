@@ -2051,17 +2051,6 @@ func (c *cli) Run(args []string) int {
 									if results[7] == "true" {
 										parallelBackupEnabled = true
 									}
-									/*
-										persistCacheEnabled := false
-										if results[8] == "true" {
-											persistCacheEnabled = true
-										}
-
-										syncPersistCacheEnabled := false
-										if results[9] == "true" {
-											syncPersistCacheEnabled = true
-										}
-									*/
 
 									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" || results[7] != "" {
 										if results[0] != "" {
@@ -2132,21 +2121,6 @@ func (c *cli) Run(args []string) int {
 														} else {
 															exitStatus = 3
 														}
-													/*
-														case "persistcacheenabled":
-															if version >= 20.1 {
-																printOptions = append(printOptions, "persistcacheenabled")
-															} else {
-																exitStatus = 3
-															}
-
-														case "syncpersistcache":
-															if version >= 20.1 {
-																printOptions = append(printOptions, "syncpersistcache")
-															} else {
-																exitStatus = 3
-															}
-													*/
 													default:
 														exitStatus = 3
 													}
@@ -2168,12 +2142,6 @@ func (c *cli) Run(args []string) int {
 											if version >= 19.5 {
 												printOptions = append(printOptions, "parallelbackupenabled")
 											}
-											/*
-												if version >= 20.1 {
-													printOptions = append(printOptions, "persistcacheenabled")
-													printOptions = append(printOptions, "syncpersistcache")
-												}
-											*/
 										}
 										if exitStatus == 0 {
 											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
@@ -2621,16 +2589,6 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 			} else {
 				parallelBackupEnabled = "false"
 			}
-			/*
-				} else if regexp.MustCompile(`persistcacheenabled=(.*)`).Match([]byte(val)) {
-					if strings.ToLower(str[i]) == "persistcacheenabled=" {
-						exitStatus = 10001
-					} else if strings.ToLower(str[i]) == "persistcacheenabled=true" || (regexp.MustCompile(`persistcacheenabled=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "persistcacheenabled=0" && str[i] != "persistcacheenabled=+0" && str[i] != "persistcacheenabled=-0") {
-						persistCacheEnabled = "true"
-					} else {
-						persistCacheEnabled = "false"
-					}
-			*/
 		} else {
 			exitStatus = 10001
 		}
