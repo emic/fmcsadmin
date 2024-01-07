@@ -9,6 +9,8 @@ Version: 2.2.0 (in development)
 - Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
 - Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Add support for Windows Server 2019 and Windows Server 2022.
+- Tested with Claris FileMaker Server 20.3.
+- Tested on macOS Sonoma 14.
 - Built with Go 1.20.
 - [INFO] Drop support for Claris FileMaker Server 19.3 and 19.4.
 - [INFO] Drop support for Ubuntu 18.04 LTS.
