@@ -3768,13 +3768,21 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 				fmt.Println("MaxGuests = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000] ")
 			}
 			if option == "maxfiles" {
-				fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+				if version >= 20.1 {
+					fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-256] ")
+				} else {
+					fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+				}
 			}
 			if option == "cachesize" {
 				fmt.Println("CacheSize = " + strconv.Itoa(cacheSize) + " [default: 512, range: 64-1048576] ")
 			}
 			if option == "hostedfiles" {
-				fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+				if version >= 20.1 {
+					fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-256] ")
+				} else {
+					fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
+				}
 			}
 			if option == "proconnections" {
 				fmt.Println("ProConnections = " + strconv.Itoa(maxProConnections) + " [default: 250, range: 0-2000] ")

@@ -1623,7 +1623,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin --fqdn example.jp set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set cwpconfig enablephp=true usefmphp=true
-	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
+	 * fmcsadmin set serverprefs maxguests=125 maxfiles=256
 	 * fmcsadmin set serverprefs AuthenticatedStream=1
 	 * fmcsadmin set serverprefs AuthenticatedStream=2
 	 * fmcsadmin set serverprefs ParallelBackupEnabled=false
