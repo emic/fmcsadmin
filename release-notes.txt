@@ -6,7 +6,8 @@ Version: 2.2.0 (in development)
 - Add support for Claris FileMaker Server 2023 (20.1, 20.2 and 20.3).
 - Add support for Ubuntu 22.04 LTS (on amd64 architecture).
 - Add support for Ubuntu 22.04 LTS on arm64 architecture.
-- Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistentCacheEnabled" or "fmcsadmin get serverprefs PersistCacheEnabled")
+- Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
+- Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Add support for Windows Server 2019 and Windows Server 2022.
 - Built with Go 1.20.
 - [INFO] Drop support for Claris FileMaker Server 19.3 and 19.4.
