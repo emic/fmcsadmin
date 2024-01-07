@@ -1063,7 +1063,7 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache":
 								default:
-									exitStatus = 3
+									exitStatus = 10001
 								}
 
 								if exitStatus != 0 {
@@ -1113,7 +1113,7 @@ func (c *cli) Run(args []string) int {
 										case "syncpersistcache":
 											printOptions = append(printOptions, "syncpersistcache")
 										default:
-											exitStatus = 3
+											exitStatus = 10001
 										}
 										if exitStatus != 0 {
 											break
@@ -1957,12 +1957,11 @@ func (c *cli) Run(args []string) int {
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
 								case "authenticatedstream", "parallelbackupenabled":
-								//case "persistcacheenabled", "syncpersistcache":
 								default:
-									exitStatus = 3
+									exitStatus = 10001
 								}
 
-								if exitStatus == 3 {
+								if exitStatus == 10001 {
 									break
 								}
 							} else {

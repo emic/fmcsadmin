@@ -8,6 +8,7 @@ Version: 2.2.0 (in development)
 - Add support for Ubuntu 22.04 LTS on arm64 architecture.
 - Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
 - Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
+- Modify behavior of outputting error messages for invalid parameters when using "GET SERVERPREFS" and "SET SERVERPREFS" command.
 - Add support for Windows Server 2019 and Windows Server 2022.
 - Tested with Claris FileMaker Server 20.3.
 - Tested on macOS Sonoma 14.
