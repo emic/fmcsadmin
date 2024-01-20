@@ -1,6 +1,8 @@
 module github.com/emic/fmcsadmin
 
-go 1.19
+go 1.21.0
+
+toolchain go1.21.6
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
