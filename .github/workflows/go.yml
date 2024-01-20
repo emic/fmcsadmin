@@ -15,8 +15,10 @@ jobs:
         go: [ '1.21' ]
     steps:
 
-    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+    - name: Setup go
+      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       with:
+        cache: false
         go-version: ${{ matrix.go }}
         check-latest: true
 
