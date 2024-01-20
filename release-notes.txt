@@ -9,6 +9,7 @@ Version: 2.2.0 (in development)
 - Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
 - Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Update "GET SERVERCONFIG" command and "GET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance.
+- Update "SET SERVERCONFIG" command and "SET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance.
 - Modify behavior of outputting error messages for invalid parameters when using "GET SERVERPREFS" and "SET SERVERPREFS" command.
 - Add support for Windows Server 2019 and Windows Server 2022.
 - Tested with Claris FileMaker Server 20.3.
@@ -19,6 +20,7 @@ Version: 2.2.0 (in development)
 - [INFO] Drop support for CentOS Linux 7.
 - [INFO] Drop support for Windows 10 Version 21H2.
 - [INFO] Drop support for macOS Big Sur 11.
+- [BUG FIX] Fix "SET SERVERPREFS" command was not executed correctly in some cases.
 
 Version: 2.1.0
 Date: May 17, 2023

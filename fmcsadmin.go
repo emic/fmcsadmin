@@ -155,20 +155,19 @@ type params struct {
 	startuprestorationbuiltin bool
 	requiresecuredb           string
 	authenticatedstream       int
-	parallelbackupenabled     bool
-	// persistcacheenabled       bool
-	characterencoding        string
-	errormessagelanguage     string
-	dataprevalidation        bool
-	usefilemakerphp          bool
-	saveKey                  bool
-	subject                  string
-	password                 string
-	certificate              string
-	privateKey               string
-	intermediateCertificates string
-	printRefreshToken        bool
-	identityFile             string
+	parallelbackupenabled     string
+	characterencoding         string
+	errormessagelanguage      string
+	dataprevalidation         bool
+	usefilemakerphp           bool
+	saveKey                   bool
+	subject                   string
+	password                  string
+	certificate               string
+	privateKey                string
+	intermediateCertificates  string
+	printRefreshToken         bool
+	identityFile              string
 }
 
 type commandOptions struct {
@@ -1841,9 +1840,9 @@ func (c *cli) Run(args []string) int {
 									maxPSOS, _ := strconv.Atoi(results[3])
 									startupRestorationEnabled := results[4]
 									secureFilesOnlyFlag := results[5]
-									authenticatedStream := results[6]
+									authenticatedStream, _ := strconv.Atoi(results[6])
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || authenticatedStream != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" {
 										if results[0] == "" {
 											cacheSize = settings[0]
 										} else {
@@ -1855,8 +1854,16 @@ func (c *cli) Run(args []string) int {
 										if results[1] == "" {
 											maxFiles = settings[1]
 										} else {
-											if maxFiles < 1 || maxFiles > 125 {
-												exitStatus = 10001
+											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+											version := getServerVersion(u.String(), token)
+											if version >= 20.1 {
+												if maxFiles < 1 || maxFiles > 256 {
+													exitStatus = 10001
+												}
+											} else {
+												if maxFiles < 1 || maxFiles > 125 {
+													exitStatus = 10001
+												}
 											}
 										}
 
@@ -1880,6 +1887,13 @@ func (c *cli) Run(args []string) int {
 										if settings[4] == -1 {
 											// for Claris FileMaker Server 19.1.2 or later
 											startupRestorationBuiltin = false
+										}
+
+										if results[6] != "" {
+											// for Claris FileMaker Server 19.3.2 or later
+											if authenticatedStream < 1 || authenticatedStream > 2 {
+												exitStatus = 10001
+											}
 										}
 
 										printOptions = []string{}
@@ -2041,46 +2055,59 @@ func (c *cli) Run(args []string) int {
 									maxFiles, _ := strconv.Atoi(results[1])
 									maxProConnections, _ := strconv.Atoi(results[2])
 									maxPSOS, _ := strconv.Atoi(results[3])
-									startupRestorationEnabled := false
-									if results[4] == "true" {
-										startupRestorationEnabled = true
-									}
+									startupRestorationEnabled := results[4]
 									secureFilesOnlyFlag := results[5]
 									authenticatedStream, _ := strconv.Atoi(results[6])
-									parallelBackupEnabled := false
-									if results[7] == "true" {
-										parallelBackupEnabled = true
-									}
+									parallelBackupEnabled := results[7]
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || secureFilesOnlyFlag != "" || results[6] != "" || results[7] != "" {
-										if results[0] != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" {
+										if results[0] == "" {
+											cacheSize = settings[0]
+										} else {
 											if cacheSize < 64 || cacheSize > 1048576 {
 												exitStatus = 10001
 											}
 										}
 
-										if results[1] != "" {
-											if maxFiles < 1 || maxFiles > 125 {
-												exitStatus = 10001
+										if results[1] == "" {
+											maxFiles = settings[1]
+										} else {
+											if version >= 20.1 {
+												if maxFiles < 1 || maxFiles > 256 {
+													exitStatus = 10001
+												}
+											} else {
+												if maxFiles < 1 || maxFiles > 125 {
+													exitStatus = 10001
+												}
 											}
 										}
 
-										if results[2] != "" {
+										if results[2] == "" {
+											maxProConnections = settings[2]
+										} else {
 											if maxProConnections < 0 || maxProConnections > 2000 {
 												exitStatus = 10001
 											}
 										}
 
-										if results[3] != "" {
+										if results[3] == "" {
+											maxPSOS = settings[3]
+										} else {
 											if maxPSOS < 0 || maxPSOS > 500 {
 												exitStatus = 10001
 											}
 										}
 
+										startupRestoration := false
 										startupRestorationBuiltin := true
 										if settings[4] == -1 {
 											// for Claris FileMaker Server 19.1.2 or later
 											startupRestorationBuiltin = false
+										} else {
+											if results[4] == "true" {
+												startupRestoration = true
+											}
 										}
 
 										if results[6] != "" {
@@ -2106,7 +2133,12 @@ func (c *cli) Run(args []string) int {
 													case "allowpsos":
 														printOptions = append(printOptions, "allowpsos")
 													case "startuprestorationenabled":
-														printOptions = append(printOptions, "startuprestorationenabled")
+														if startupRestorationBuiltin {
+															printOptions = append(printOptions, "startuprestorationenabled")
+														} else {
+															// for Claris FileMaker Server 19 or later
+															exitStatus = 3
+														}
 													case "requiresecuredb":
 														printOptions = append(printOptions, "requiresecuredb")
 													case "authenticatedstream":
@@ -2134,7 +2166,9 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "maxfiles")
 											printOptions = append(printOptions, "maxguests")
 											printOptions = append(printOptions, "allowpsos")
-											printOptions = append(printOptions, "startuprestorationenabled")
+											if startupRestorationBuiltin {
+												printOptions = append(printOptions, "startuprestorationenabled")
+											}
 											printOptions = append(printOptions, "requiresecuredb")
 											if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 												printOptions = append(printOptions, "authenticatedstream")
@@ -2152,7 +2186,7 @@ func (c *cli) Run(args []string) int {
 													maxfiles:                  maxFiles,
 													maxproconnections:         maxProConnections,
 													maxpsos:                   maxPSOS,
-													startuprestorationenabled: startupRestorationEnabled,
+													startuprestorationenabled: startupRestoration,
 													startuprestorationbuiltin: startupRestorationBuiltin,
 												})
 											}
@@ -3727,6 +3761,9 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 		fmt.Println(err.Error())
 	}
 
+	/* for debugging */
+	//fmt.Println(bytes.NewBuffer([]byte(body)))
+
 	err = scan.ScanTree(v, "/messages[0]/code", &resultCode)
 	if err != nil {
 		return settings, 3
@@ -4381,8 +4418,12 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/parallelbackup") {
 			// for Claris FileMaker Server 19.5.1 or later
+			parallelbackupenabled := false
+			if p.parallelbackupenabled == "true" {
+				parallelbackupenabled = true
+			}
 			d := parallelBackupConfigInfo{
-				p.parallelbackupenabled,
+				parallelbackupenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin {
