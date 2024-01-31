@@ -10,8 +10,8 @@ jobs:
 
     strategy:
       matrix:
-        # https://docs.github.com/ja/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
-        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-latest, macos-11, macos-12, macos-13, macos-latest, windows-2019, windows-2022, windows-latest ]
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
+        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-latest, macos-11, macos-12, macos-13, macos-14, macos-latest, windows-2019, windows-2022, windows-latest ]
         go: [ '1.21' ]
     steps:
 
