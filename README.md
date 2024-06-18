@@ -28,6 +28,7 @@ Features
 - View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
 - FileMaker Admin API PKI Authentication (for FileMaker Server 19.6.1 or later)
 - View the setting for the persistent cache (for FileMaker Server 20.1.1 or later)
+- View the setting for blocking new users (for FileMaker Server 21.0.1 or later)
 
 Supported Servers
 -----

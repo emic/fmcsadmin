@@ -1061,6 +1061,7 @@ func (c *cli) Run(args []string) int {
 									startupRestoration = true
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache":
+								case "blocknewusersenabled":
 								default:
 									exitStatus = 10001
 								}
@@ -1111,6 +1112,8 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "persistcacheenabled")
 										case "syncpersistcache":
 											printOptions = append(printOptions, "syncpersistcache")
+										case "blocknewusersenabled":
+											printOptions = append(printOptions, "blocknewusersenabled")
 										default:
 											exitStatus = 10001
 										}
@@ -1134,6 +1137,9 @@ func (c *cli) Run(args []string) int {
 									if !usingCloud && version >= 20.1 {
 										printOptions = append(printOptions, "persistcacheenabled")
 										printOptions = append(printOptions, "syncpersistcache")
+									}
+									if !usingCloud && version >= 21.0 {
+										printOptions = append(printOptions, "blocknewusersenabled")
 									}
 								}
 
@@ -1181,6 +1187,18 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 20.1 {
+												exitStatus = 3
+											}
+										}
+									}
+
+									if option == "blocknewusersenabled" {
+										if usingCloud {
+											// for Claris FileMaker Cloud
+											exitStatus = 3
+										} else {
+											// for Claris FileMaker Server
+											if version < 21.0 {
 												exitStatus = 3
 											}
 										}
@@ -3859,6 +3877,12 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 					getServerSettingAsBool(strings.Replace(urlString, "/general", "/persistentcache", 1), token, []string{option})
 				}
 			}
+
+			if option == "blocknewusersenabled" {
+				if version >= 21.0 {
+					getServerSettingAsBool(strings.Replace(urlString, "/general", "/blocknewusers", 1), token, []string{option})
+				}
+			}
 		}
 	}
 
@@ -3941,6 +3965,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 		if syncPersistCacheEnabled {
 			syncPersistCacheEnabledStr = "true"
 		}
+	} else if u.Path == path.Join(getAPIBasePath(urlString), "server", "config", "blocknewusers") {
+		err = scan.ScanTree(v, "/response/blockNewUsers", &enabled)
 	}
 
 	enabledStr = "false"
@@ -3962,6 +3988,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 				fmt.Println("PersistCacheEnabled = " + enabledStr + " [default: false] ")
 			case "syncpersistcache":
 				fmt.Println("SyncPersistCache = " + syncPersistCacheEnabledStr + " [default: false] ")
+			case "blocknewusersenabled":
+				fmt.Println("BlockNewUsersEnabled = " + enabledStr + " [default: false] ")
 			default:
 			}
 		}
