@@ -33,7 +33,7 @@ Features
 Supported Servers
 -----
 - Claris FileMaker Server 2023 (20.1, 20.2, 20.3)
-- Claris FileMaker Server 19 (19.5, 19.6)
+- Claris FileMaker Server 19 (19.6)
 
 Usage
 -----
