@@ -91,6 +91,10 @@ type parallelBackupConfigInfo struct {
 	ParallelBackupEnabled bool `json:"parallelBackupEnabled"`
 }
 
+type blockNewUsersConfigInfo struct {
+	BlockNewUsersEnabled bool `json:"blockNewUsers"`
+}
+
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -156,6 +160,7 @@ type params struct {
 	requiresecuredb           string
 	authenticatedstream       int
 	parallelbackupenabled     string
+	blocknewusersenabled      string
 	characterencoding         string
 	errormessagelanguage      string
 	dataprevalidation         bool
@@ -1989,6 +1994,7 @@ func (c *cli) Run(args []string) int {
 								switch strings.ToLower(option) {
 								case "cachesize", "maxfiles", "maxguests", "allowpsos", "startuprestorationenabled", "requiresecuredb":
 								case "authenticatedstream", "parallelbackupenabled":
+								case "blocknewusersenabled":
 								default:
 									exitStatus = 10001
 								}
@@ -2077,8 +2083,9 @@ func (c *cli) Run(args []string) int {
 									secureFilesOnlyFlag := results[5]
 									authenticatedStream, _ := strconv.Atoi(results[6])
 									parallelBackupEnabled := results[7]
+									blockNewUsersEnabled := results[8]
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || blockNewUsersEnabled != "" {
 										if results[0] == "" {
 											cacheSize = settings[0]
 										} else {
@@ -2171,6 +2178,12 @@ func (c *cli) Run(args []string) int {
 														} else {
 															exitStatus = 3
 														}
+													case "blocknewusersenabled":
+														if version >= 21.0 {
+															printOptions = append(printOptions, "blocknewusersenabled")
+														} else {
+															exitStatus = 3
+														}
 													default:
 														exitStatus = 3
 													}
@@ -2193,6 +2206,9 @@ func (c *cli) Run(args []string) int {
 											}
 											if version >= 19.5 {
 												printOptions = append(printOptions, "parallelbackupenabled")
+											}
+											if version >= 21.0 {
+												printOptions = append(printOptions, "blocknewusersenabled")
 											}
 										}
 										if exitStatus == 0 {
@@ -2233,6 +2249,19 @@ func (c *cli) Run(args []string) int {
 													if version >= 19.5 {
 														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "parallelbackup")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", parallelbackupenabled: parallelBackupEnabled})
+														if exitStatus != 0 {
+															exitStatus = 10001
+														}
+													} else {
+														exitStatus = 3
+													}
+												}
+
+												if results[8] != "" {
+													// for Claris FileMaker Server 21.0.1 or later
+													if version >= 21.0 {
+														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "blocknewusers")
+														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", blocknewusersenabled: blockNewUsersEnabled})
 														if exitStatus != 0 {
 															exitStatus = 10001
 														}
@@ -2582,6 +2611,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	secureFilesOnlyFlag := ""
 	authenticatedStream := ""
 	parallelBackupEnabled := ""
+	blockNewUsersEnabled := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2641,6 +2671,14 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 			} else {
 				parallelBackupEnabled = "false"
 			}
+		} else if regexp.MustCompile(`blocknewusersenabled=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "blocknewusersenabled=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "blocknewusersenabled=true" || (regexp.MustCompile(`blocknewusersenabled=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "blocknewusersenabled=0" && str[i] != "blocknewusersenabled=+0" && str[i] != "blocknewusersenabled=-0") {
+				blockNewUsersEnabled = "true"
+			} else {
+				blockNewUsersEnabled = "false"
+			}
 		} else {
 			exitStatus = 10001
 		}
@@ -2654,6 +2692,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	results = append(results, secureFilesOnlyFlag)
 	results = append(results, authenticatedStream)
 	results = append(results, parallelBackupEnabled)
+	results = append(results, blockNewUsersEnabled)
 
 	return results, exitStatus
 }
@@ -4452,6 +4491,16 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 			}
 			d := parallelBackupConfigInfo{
 				parallelbackupenabled,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/server/config/blocknewusers") {
+			// for Claris FileMaker Server 21.0.1 or later
+			blocknewusersenabled := false
+			if p.blocknewusersenabled == "true" {
+				blocknewusersenabled = true
+			}
+			d := blockNewUsersConfigInfo{
+				blocknewusersenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin {

@@ -1162,6 +1162,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs ParallelBackupEnabled
 	 * fmcsadmin get serverprefs PersistCacheEnabled
 	 * fmcsadmin get serverprefs SyncPersistCache
+	 * fmcsadmin get serverprefs BlockNewUsersEnabled
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1628,6 +1629,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin set serverprefs AuthenticatedStream=2
 	 * fmcsadmin set serverprefs ParallelBackupEnabled=false
 	 * fmcsadmin set serverprefs ParallelBackupEnabled=true
+	 * fmcsadmin set serverprefs BlockNewUsersEnabled=false
+	 * fmcsadmin set serverprefs BlockNewUsersEnabled=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100

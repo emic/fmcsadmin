@@ -8,6 +8,7 @@ Version: 2.2.0 (in development)
 - Add support for Ubuntu 22.04 LTS (on amd64 architecture).
 - Add support for Ubuntu 22.04 LTS on arm64 architecture.
 - Update "GET SERVERPREFS" command to get blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs BlockNewUsersEnabled")
+- Update "SET SERVERPREFS" command to set blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs BlockNewUsersEnabled=true")
 - Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
 - Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Update "GET SERVERCONFIG" command and "GET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance.
