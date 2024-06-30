@@ -9,8 +9,12 @@ Version: 2.2.0 (in development)
 - Add support for Ubuntu 22.04 LTS on arm64 architecture.
 - Update "GET SERVERPREFS" command to get blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs BlockNewUsersEnabled")
 - Update "SET SERVERPREFS" command to set blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs BlockNewUsersEnabled=true")
-- Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs PersistCacheEnabled")
-- Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1). (Usage: "fmcsadmin get serverprefs SyncPersistCache")
+- Update "SET SERVERPREFS" command to set persistent cache setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs PersistCacheEnabled=true")
+- Update "SET SERVERPREFS" command to set persistent cache sync setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs SyncPersistCache=true")
+- Update "SET SERVERPREFS" command to set database server auto restart setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs DatabaseServerAutoRestart=true")
+- Update "GET SERVERPREFS" command to get database server auto restart setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs DatabaseServerAutoRestart")
+- Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs PersistCacheEnabled" or "fmcsadmin get serverprefs SyncPersistCache")
+- Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Update "GET SERVERCONFIG" command and "GET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance.
 - Update "SET SERVERCONFIG" command and "SET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance.
 - Modify behavior of outputting error messages for invalid parameters when using "GET SERVERPREFS" and "SET SERVERPREFS" command.

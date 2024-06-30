@@ -27,11 +27,14 @@ Features
 - Cancel the currently running backup (for FileMaker Server 19.5.1 or later)
 - View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
 - FileMaker Admin API PKI Authentication (for FileMaker Server 19.6.1 or later)
-- View the setting for the persistent cache (for FileMaker Server 20.1.1 or later)
-- View the setting for blocking new users (for FileMaker Server 21.0.1 or later)
+- View the settings for the persistent cache (for FileMaker Server 20.1.1 or later)
+- Change the settings for the persistent cache (for FileMaker Server 21.0.1 or later)
+- View and change the setting for database server auto restarting (for FileMaker Server 21.0.1 or later)
+- View and change the setting for blocking new users (for FileMaker Server 21.0.1 or later)
 
 Supported Servers
 -----
+- Claris FileMaker Server 2024 (21.0)
 - Claris FileMaker Server 2023 (20.1, 20.2, 20.3)
 - Claris FileMaker Server 19 (19.6)
 
