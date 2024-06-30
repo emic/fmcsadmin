@@ -317,7 +317,7 @@ func (c *cli) Run(args []string) int {
 	u, _ := url.Parse(baseURI)
 
 	usingCloud := false
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) {
+	if regexp.MustCompile(`https://(.*)\.account\.filemaker-cloud\.com/`).Match([]byte(baseURI)) {
 		// Not Supported
 		usingCloud = true
 	}
@@ -338,7 +338,7 @@ func (c *cli) Run(args []string) int {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "backup":
 						running := true
-						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+						u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 						_, err := http.Get(u.String())
 						if err != nil {
 							running = false
@@ -349,7 +349,7 @@ func (c *cli) Run(args []string) int {
 							if token != "" && exitStatus == 0 && err == nil {
 								version := getServerVersion(u.String(), token)
 								if !usingCloud && version >= 19.5 {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "cancelbackup")
+									u.Path = path.Join(getAPIBasePath(), "server", "cancelbackup")
 									exitStatus, _, err = sendRequest("POST", u.String(), token, params{command: "cancel backup"})
 									if err == nil {
 										fmt.Fprintln(c.outStream, "Command finished")
@@ -381,7 +381,7 @@ func (c *cli) Run(args []string) int {
 					switch strings.ToLower(cmdArgs[1]) {
 					case "create":
 						running := true
-						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+						u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 						_, err := http.Get(u.String())
 						if err != nil {
 							running = false
@@ -404,7 +404,7 @@ func (c *cli) Run(args []string) int {
 											fmt.Fprintln(c.outStream, "Invalid parameter for option: --KeyFilePass")
 											exitStatus = 10001
 										} else {
-											u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "csr")
+											u.Path = path.Join(getAPIBasePath(), "server", "certificate", "csr")
 											exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "certificate create", subject: base64.StdEncoding.EncodeToString([]byte(cmdArgs[2])), password: keyFilePass})
 											if exitStatus == 1712 {
 												fmt.Fprintln(c.outStream, "Private key file already exists, please remove it and run the command again.")
@@ -439,7 +439,7 @@ func (c *cli) Run(args []string) int {
 						if res == "y" {
 							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+								u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 								version := getServerVersion(u.String(), token)
 								if version >= 19.2 {
 									if len(cmdArgs[2:]) > 0 {
@@ -590,7 +590,7 @@ func (c *cli) Run(args []string) int {
 
 										// import SSL certficates
 										if exitStatus == 0 {
-											u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "import")
+											u.Path = path.Join(getAPIBasePath(), "server", "certificate", "import")
 											exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "certificate import", certificate: string(certificateData), privateKey: string(keyFileData), intermediateCertificates: string(intermediateCAData), password: keyFilePass})
 
 											if exitStatus == 1712 {
@@ -633,10 +633,10 @@ func (c *cli) Run(args []string) int {
 						if res == "y" {
 							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+								u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 								version := getServerVersion(u.String(), token)
 								if version >= 19.2 {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "certificate", "delete")
+									u.Path = path.Join(getAPIBasePath(), "server", "certificate", "delete")
 									exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
 									if err != nil {
 										fmt.Fprintln(c.outStream, err.Error())
@@ -672,7 +672,7 @@ func (c *cli) Run(args []string) int {
 			if res == "y" {
 				token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 				if token != "" && exitStatus == 0 && err == nil {
-					u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+					u.Path = path.Join(getAPIBasePath(), "databases")
 					args = []string{""}
 					if len(cmdArgs[1:]) > 0 {
 						args = cmdArgs[1:]
@@ -682,9 +682,9 @@ func (c *cli) Run(args []string) int {
 						for i := 0; i < len(idList); i++ {
 							fmt.Fprintln(c.outStream, "File Closing: "+nameList[i])
 						}
-						connectedClients := getClients(u.String(), token, args, "")
+						connectedClients := getClients(u.String(), token, args)
 						for i := 0; i < len(idList); i++ {
-							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+							u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "close", messageText: message, force: forceFlag})
 							if exitStatus == 0 && err == nil && len(connectedClients) == 0 {
 								// Don't output this message when the clients connected to the specified databases are existing
@@ -723,7 +723,7 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							if id > 0 {
-								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+								u.Path = path.Join(getAPIBasePath(), "schedules", strconv.Itoa(id))
 								scheduleName := getScheduleName(u.String(), token, id)
 								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
 								if err != nil {
@@ -772,10 +772,10 @@ func (c *cli) Run(args []string) int {
 								}
 							}
 							if id > 0 {
-								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+								u.Path = path.Join(getAPIBasePath(), "schedules", strconv.Itoa(id))
 								exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "disable"})
 								if exitStatus == 0 && err == nil {
-									u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
+									u.Path = path.Join(getAPIBasePath(), "schedules")
 									exitStatus = listSchedules(u.String(), token, id)
 								}
 							} else {
@@ -821,11 +821,11 @@ func (c *cli) Run(args []string) int {
 							if id > -1 && exitStatus == 0 {
 								if id == 0 {
 									// disconnect clients
-									exitStatus, _ = disconnectAllClient(u, baseURI, token, message, graceTime)
+									exitStatus, _ = disconnectAllClient(u, token, message, graceTime)
 								} else {
 									// check the client connection
-									u.Path = path.Join(getAPIBasePath(baseURI), "clients")
-									idList := getClients(u.String(), token, []string{""}, "NORMAL")
+									u.Path = path.Join(getAPIBasePath(), "clients")
+									idList := getClients(u.String(), token, []string{""})
 									connected := false
 									if len(idList) > 0 && id > 0 {
 										for i := 0; i < len(idList); i++ {
@@ -838,7 +838,7 @@ func (c *cli) Run(args []string) int {
 
 									if connected {
 										// disconnect a client
-										u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(id))
+										u.Path = path.Join(getAPIBasePath(), "clients", strconv.Itoa(id))
 										u.RawQuery = "messageText=" + url.QueryEscape(message) + "&graceTime=" + url.QueryEscape(strconv.Itoa(graceTime))
 										exitStatus, _, _ = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
 									} else {
@@ -874,10 +874,10 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+							u.Path = path.Join(getAPIBasePath(), "schedules", strconv.Itoa(id))
 							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "enable"})
 							if exitStatus == 0 && err == nil {
-								u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
+								u.Path = path.Join(getAPIBasePath(), "schedules")
 								exitStatus = listSchedules(u.String(), token, id)
 							}
 						} else {
@@ -909,7 +909,7 @@ func (c *cli) Run(args []string) int {
 									id = sid
 								}
 							}
-							u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
+							u.Path = path.Join(getAPIBasePath(), "schedules")
 							exitStatus = getBackupTime(u.String(), token, id)
 							logout(baseURI, token)
 						} else if detectHostUnreachable(exitStatus) {
@@ -972,14 +972,14 @@ func (c *cli) Run(args []string) int {
 						if exitStatus == 0 {
 							token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 							if token != "" && exitStatus == 0 && err == nil {
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+								u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 								version := getServerVersion(u.String(), token)
 								if runtime.GOOS == "linux" && fqdn == "" && version < 19.6 {
 									// Not Supported
 									exitStatus = 21
 								} else {
 									if exitStatus == 0 {
-										_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+										_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(), token, printOptions)
 									}
 								}
 								logout(baseURI, token)
@@ -1053,7 +1053,7 @@ func (c *cli) Run(args []string) int {
 									printOptions = append(printOptions, "securefilesonly")
 								}
 								if exitStatus == 0 {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+									u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 									_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 								}
 								logout(baseURI, token)
@@ -1099,7 +1099,7 @@ func (c *cli) Run(args []string) int {
 								printOptions = append(printOptions, "authenticatedstream")
 							} else {
 								// for Claris FileMaker Server
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+								u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 								versionString, _ = getServerVersionString(u.String(), token)
 								version, _ = getServerVersionAsFloat(versionString)
 
@@ -1167,7 +1167,7 @@ func (c *cli) Run(args []string) int {
 
 							if exitStatus == 0 {
 								if !usingCloud {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+									u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 									_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 								}
 
@@ -1175,7 +1175,7 @@ func (c *cli) Run(args []string) int {
 									if option == "authenticatedstream" {
 										if usingCloud {
 											// for Claris FileMaker Cloud
-											u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+											u.Path = path.Join(getAPIBasePath(), "server", "config", "authenticatedstream")
 											_, exitStatus, _ = getAuthenticatedStreamSetting(u.String(), token, printOptions)
 										} else {
 											// for Claris FileMaker Server
@@ -1299,7 +1299,7 @@ func (c *cli) Run(args []string) int {
 						if statsFlag {
 							id = 0
 						}
-						u.Path = path.Join(getAPIBasePath(baseURI), "clients")
+						u.Path = path.Join(getAPIBasePath(), "clients")
 						exitStatus = listClients(u.String(), token, id)
 						logout(baseURI, token)
 					} else if detectHostUnreachable(exitStatus) {
@@ -1312,7 +1312,7 @@ func (c *cli) Run(args []string) int {
 						if statsFlag {
 							idList = []int{0}
 						}
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+						u.Path = path.Join(getAPIBasePath(), "databases")
 						exitStatus = listFiles(c, u.String(), token, idList)
 						logout(baseURI, token)
 					} else if detectHostUnreachable(exitStatus) {
@@ -1324,14 +1324,14 @@ func (c *cli) Run(args []string) int {
 					} else {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+							u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 							version := getServerVersion(u.String(), token)
 							if version >= 19.2 {
-								u.Path = path.Join(getAPIBasePath(baseURI), "plugins")
+								u.Path = path.Join(getAPIBasePath(), "plugins")
 								exitStatus = listPlugins(u.String(), token)
 							} else {
 								var running string
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+								u.Path = path.Join(getAPIBasePath(), "server", "status")
 								_, running, _ = sendRequest("GET", u.String(), token, params{})
 								if running == "STOPPED" {
 									exitStatus = 10502
@@ -1347,7 +1347,7 @@ func (c *cli) Run(args []string) int {
 				case "schedules":
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
-						u.Path = path.Join(getAPIBasePath(baseURI), "schedules")
+						u.Path = path.Join(getAPIBasePath(), "schedules")
 						exitStatus = listSchedules(u.String(), token, 0)
 						logout(baseURI, token)
 					} else if detectHostUnreachable(exitStatus) {
@@ -1362,7 +1362,7 @@ func (c *cli) Run(args []string) int {
 		case "open":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
-				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+				u.Path = path.Join(getAPIBasePath(), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
@@ -1380,7 +1380,7 @@ func (c *cli) Run(args []string) int {
 							fmt.Fprintln(c.outStream, "File Opening: "+nameList[i])
 						}
 						for i := 0; i < len(idList); i++ {
-							u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+							u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "open", key: key, saveKey: saveKeyFlag})
 							if exitStatus == 0 && err == nil {
 								// Note: FileMaker Admin API does not validate the encryption key.
@@ -1388,7 +1388,7 @@ func (c *cli) Run(args []string) int {
 								var openedID []int
 								for value := 0; ; {
 									value++
-									u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+									u.Path = path.Join(getAPIBasePath(), "databases")
 									openedID, _, _ = getDatabases(u.String(), token, []string{strconv.Itoa(idList[i])}, "NORMAL", false)
 									if len(openedID) > 0 || value > 3 {
 										break
@@ -1414,7 +1414,7 @@ func (c *cli) Run(args []string) int {
 		case "pause":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
-				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+				u.Path = path.Join(getAPIBasePath(), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
@@ -1425,7 +1425,7 @@ func (c *cli) Run(args []string) int {
 						fmt.Fprintln(c.outStream, "File Pausing: "+nameList[i])
 					}
 					for i := 0; i < len(idList); i++ {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+						u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "pause"})
 						if exitStatus == 0 && err == nil {
 							fmt.Fprintln(c.outStream, "File Paused: "+nameList[i])
@@ -1453,11 +1453,11 @@ func (c *cli) Run(args []string) int {
 				if token != "" && exitStatus == 0 && err == nil {
 					var version float64
 					if !usingCloud {
-						u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+						u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 						version = getServerVersion(u.String(), token)
 					}
 					if version >= 19.3 || usingCloud {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+						u.Path = path.Join(getAPIBasePath(), "databases")
 						args = []string{""}
 						if len(cmdArgs[1:]) > 0 {
 							args = cmdArgs[1:]
@@ -1465,7 +1465,7 @@ func (c *cli) Run(args []string) int {
 						idList, nameList, _ := getDatabases(u.String(), token, args, "CLOSED", true)
 						if len(idList) > 0 {
 							for i := 0; i < len(idList); i++ {
-								u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+								u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 								exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{})
 								if exitStatus == 0 && err == nil {
 									fmt.Fprintln(c.outStream, "File Removed: "+nameList[i])
@@ -1518,9 +1518,9 @@ func (c *cli) Run(args []string) int {
 								if forceFlag {
 									graceTime = 0
 								}
-								exitStatus, _ = stopDatabaseServer(u, baseURI, token, message, graceTime)
+								exitStatus, _ = stopDatabaseServer(u, token, message, graceTime)
 								if exitStatus == 0 {
-									_, _ = waitStoppingServer(u, baseURI, token)
+									_, _ = waitStoppingServer(u, token)
 									// start database server
 									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 								}
@@ -1539,7 +1539,7 @@ func (c *cli) Run(args []string) int {
 		case "resume":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
-				u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+				u.Path = path.Join(getAPIBasePath(), "databases")
 				args = []string{""}
 				if len(cmdArgs[1:]) > 0 {
 					args = cmdArgs[1:]
@@ -1550,7 +1550,7 @@ func (c *cli) Run(args []string) int {
 						fmt.Fprintln(c.outStream, "File Resuming: "+nameList[i])
 					}
 					for i := 0; i < len(idList); i++ {
-						u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+						u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 						exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{command: "resume"})
 						if exitStatus == 0 && err == nil {
 							fmt.Fprintln(c.outStream, "File Resumed: "+nameList[i])
@@ -1577,10 +1577,10 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+							u.Path = path.Join(getAPIBasePath(), "schedules", strconv.Itoa(id))
 							exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "RUNNING"})
 							if exitStatus == 0 && err == nil {
-								u.Path = path.Join(getAPIBasePath(baseURI), "schedules", strconv.Itoa(id))
+								u.Path = path.Join(getAPIBasePath(), "schedules", strconv.Itoa(id))
 								scheduleName := getScheduleName(u.String(), token, id)
 								if scheduleName != "" {
 									fmt.Fprintln(c.outStream, "Schedule '"+scheduleName+"' will run now.")
@@ -1606,7 +1606,7 @@ func (c *cli) Run(args []string) int {
 		case "send":
 			token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 			if token != "" && exitStatus == 0 && err == nil {
-				exitStatus = sendMessages(u, baseURI, token, message, cmdArgs, clientID)
+				exitStatus = sendMessages(u, token, message, cmdArgs, clientID)
 				logout(baseURI, token)
 			} else if detectHostUnreachable(exitStatus) {
 				exitStatus = 10502
@@ -1642,7 +1642,7 @@ func (c *cli) Run(args []string) int {
 							if exitStatus == 0 {
 								token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 								if token != "" && exitStatus == 0 && err == nil {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+									u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 									version := getServerVersion(u.String(), token)
 									if runtime.GOOS == "linux" && fqdn == "" && version < 19.6 {
 										// Not Supported
@@ -1650,10 +1650,10 @@ func (c *cli) Run(args []string) int {
 									} else {
 										var settings []string
 										printOptions := []string{}
-										settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+										settings, exitStatus, err = getWebTechnologyConfigurations(baseURI, getAPIBasePath(), token, printOptions)
 										if err == nil {
 											var results []string
-											results, exitStatus = parseWebConfigurationSettings(c, cmdArgs[2:])
+											results, exitStatus = parseWebConfigurationSettings(cmdArgs[2:])
 
 											phpFlag := results[0]
 											xmlFlag := results[1]
@@ -1785,7 +1785,7 @@ func (c *cli) Run(args []string) int {
 													useFMPHP = false
 												}
 
-												u.Path = path.Join(getAPIBasePath(baseURI), "php", "config")
+												u.Path = path.Join(getAPIBasePath(), "php", "config")
 												if settings[4] != "" {
 													// exclude Claris FileMaker Server for Linux
 													exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
@@ -1811,11 +1811,11 @@ func (c *cli) Run(args []string) int {
 														xmlEnabled = "false"
 													}
 
-													u.Path = path.Join(getAPIBasePath(baseURI), "xml", "config")
+													u.Path = path.Join(getAPIBasePath(), "xml", "config")
 													_, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enabled: xmlEnabled})
 												}
 
-												_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(baseURI), token, printOptions)
+												_, exitStatus, _ = getWebTechnologyConfigurations(baseURI, getAPIBasePath(), token, printOptions)
 												if restartMessageFlag {
 													fmt.Fprintln(c.outStream, "Restart the FileMaker Server background processes to apply the change.")
 												}
@@ -1863,11 +1863,11 @@ func (c *cli) Run(args []string) int {
 							if token != "" && exitStatus == 0 && err == nil {
 								var settings []int
 								printOptions := []string{}
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+								u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 								settings, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 								if exitStatus == 0 {
 									var results []string
-									results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
+									results, exitStatus = parseServerConfigurationSettings(cmdArgs[2:])
 
 									cacheSize, _ := strconv.Atoi(results[0])
 									maxFiles, _ := strconv.Atoi(results[1])
@@ -1889,7 +1889,7 @@ func (c *cli) Run(args []string) int {
 										if results[1] == "" {
 											maxFiles = settings[1]
 										} else {
-											u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+											u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 											version := getServerVersion(u.String(), token)
 											if version >= 20.1 {
 												if maxFiles < 1 || maxFiles > 256 {
@@ -1968,7 +1968,7 @@ func (c *cli) Run(args []string) int {
 										}
 										if exitStatus == 0 {
 											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" {
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
 													command:                   "set",
 													cachesize:                 cacheSize,
@@ -1980,12 +1980,12 @@ func (c *cli) Run(args []string) int {
 											}
 
 											if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "security")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 											}
 
 											if exitStatus == 0 {
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												_, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 											}
 										}
@@ -2031,7 +2031,7 @@ func (c *cli) Run(args []string) int {
 							var version float64
 
 							if !usingCloud {
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "metadata")
+								u.Path = path.Join(getAPIBasePath(), "server", "metadata")
 								versionString, _ = getServerVersionString(u.String(), token)
 								version, _ = getServerVersionAsFloat(versionString)
 							}
@@ -2064,7 +2064,7 @@ func (c *cli) Run(args []string) int {
 									printOptions = append(printOptions, "authenticatedstream")
 								}
 
-								results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
+								results, exitStatus = parseServerConfigurationSettings(cmdArgs[2:])
 
 								authenticatedStream, _ := strconv.Atoi(results[6])
 								if results[6] != "" {
@@ -2073,7 +2073,7 @@ func (c *cli) Run(args []string) int {
 									}
 								}
 								if exitStatus == 0 {
-									u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+									u.Path = path.Join(getAPIBasePath(), "server", "config", "authenticatedstream")
 									exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
 									if exitStatus != 0 {
 										exitStatus = 10001
@@ -2083,11 +2083,11 @@ func (c *cli) Run(args []string) int {
 								}
 							} else {
 								// for Claris FileMaker Server
-								u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+								u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 								settings, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 								if exitStatus == 0 {
 									var results []string
-									results, exitStatus = parseServerConfigurationSettings(c, cmdArgs[2:])
+									results, exitStatus = parseServerConfigurationSettings(cmdArgs[2:])
 
 									cacheSize, _ := strconv.Atoi(results[0])
 									maxFiles, _ := strconv.Atoi(results[1])
@@ -2251,7 +2251,7 @@ func (c *cli) Run(args []string) int {
 										}
 										if exitStatus == 0 {
 											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
 													command:                   "set",
 													cachesize:                 cacheSize,
@@ -2264,7 +2264,7 @@ func (c *cli) Run(args []string) int {
 											}
 
 											if exitStatus == 0 && (secureFilesOnlyFlag == "true" || secureFilesOnlyFlag == "false") {
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "security")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "security")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", requiresecuredb: secureFilesOnlyFlag})
 											}
 
@@ -2272,7 +2272,7 @@ func (c *cli) Run(args []string) int {
 												if results[6] != "" {
 													if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 														// for Claris FileMaker Server 19.3.2 or later
-														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "authenticatedstream")
+														u.Path = path.Join(getAPIBasePath(), "server", "config", "authenticatedstream")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", authenticatedstream: authenticatedStream})
 														if exitStatus != 0 {
 															exitStatus = 10001
@@ -2285,7 +2285,7 @@ func (c *cli) Run(args []string) int {
 												if results[7] != "" {
 													// for Claris FileMaker Server 19.5.1 or later
 													if version >= 19.5 {
-														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "parallelbackup")
+														u.Path = path.Join(getAPIBasePath(), "server", "config", "parallelbackup")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", parallelbackupenabled: parallelBackupEnabled})
 														if exitStatus != 0 {
 															exitStatus = 10001
@@ -2302,7 +2302,7 @@ func (c *cli) Run(args []string) int {
 													if version >= 21.0 {
 														var persistentCacheSettings []string
 
-														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "persistentcache")
+														u.Path = path.Join(getAPIBasePath(), "server", "config", "persistentcache")
 
 														persistentCacheSettings, exitStatus, _ = getPersistentCacheConfigurations(u.String(), token, noPrintOptions)
 														if exitStatus == 0 {
@@ -2349,7 +2349,7 @@ func (c *cli) Run(args []string) int {
 												if results[11] != "" {
 													// for Claris FileMaker Server 21.0.1 or later
 													if version >= 21.0 {
-														u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "blocknewusers")
+														u.Path = path.Join(getAPIBasePath(), "server", "config", "blocknewusers")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", blocknewusersenabled: blockNewUsersEnabled})
 														if exitStatus != 0 {
 															exitStatus = 10001
@@ -2359,7 +2359,7 @@ func (c *cli) Run(args []string) int {
 													}
 												}
 
-												u.Path = path.Join(getAPIBasePath(baseURI), "server", "config", "general")
+												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												settingResults, exitStatus = getServerGeneralConfigurations(u.String(), token, printOptions)
 												if restartMessageFlag {
 													fmt.Fprintln(c.outStream, "Please restart the FileMaker Server service to apply the change.")
@@ -2395,7 +2395,7 @@ func (c *cli) Run(args []string) int {
 						token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 						if token != "" && exitStatus == 0 && err == nil {
 							var running string
-							u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+							u.Path = path.Join(getAPIBasePath(), "server", "status")
 							_, running, _ = sendRequest("GET", u.String(), token, params{})
 							if running == "RUNNING" {
 								// Service already running
@@ -2429,7 +2429,7 @@ func (c *cli) Run(args []string) int {
 							}
 						}
 						if id > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "clients")
+							u.Path = path.Join(getAPIBasePath(), "clients")
 							exitStatus = listClients(u.String(), token, id)
 						}
 						logout(baseURI, token)
@@ -2440,7 +2440,7 @@ func (c *cli) Run(args []string) int {
 					token, exitStatus, err = login(baseURI, username, password, params{retry: retry, identityFile: identityFile})
 					if token != "" && exitStatus == 0 && err == nil {
 						if len(cmdArgs[2:]) > 0 {
-							u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+							u.Path = path.Join(getAPIBasePath(), "databases")
 							idList, _, _ := getDatabases(u.String(), token, cmdArgs[2:], "", false)
 							if len(idList) > 0 {
 								exitStatus = listFiles(c, u.String(), token, idList)
@@ -2482,9 +2482,9 @@ func (c *cli) Run(args []string) int {
 								if forceFlag {
 									graceTime = 0
 								}
-								exitStatus, _ = stopDatabaseServer(u, baseURI, token, message, graceTime)
+								exitStatus, _ = stopDatabaseServer(u, token, message, graceTime)
 								if exitStatus == 0 {
-									exitStatus, _ = waitStoppingServer(u, baseURI, token)
+									exitStatus, _ = waitStoppingServer(u, token)
 								}
 								logout(baseURI, token)
 							} else if detectHostUnreachable(exitStatus) {
@@ -2692,7 +2692,7 @@ func getFlags(args []string, cFlags commandOptions) ([]string, commandOptions, e
 	return resultArgs, cFlags, nil
 }
 
-func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
+func parseServerConfigurationSettings(str []string) ([]string, int) {
 	exitStatus := 0
 	var results []string
 	cacheSize := ""
@@ -2819,7 +2819,7 @@ func parseServerConfigurationSettings(c *cli, str []string) ([]string, int) {
 	return results, exitStatus
 }
 
-func parseWebConfigurationSettings(c *cli, str []string) ([]string, int) {
+func parseWebConfigurationSettings(str []string) ([]string, int) {
 	exitStatus := 0
 	var results []string
 	phpFlag := ""
@@ -2927,7 +2927,7 @@ func getBaseURI(fqdn string) string {
 	return baseURI
 }
 
-func getAPIBasePath(baseURI string) string {
+func getAPIBasePath() string {
 	path := "/fmi/admin/api/v2"
 
 	return path
@@ -2971,7 +2971,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 	token := ""
 	exitStatus := 0
 
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(baseURI)) {
+	if regexp.MustCompile(`https://(.*)\.account\.filemaker-cloud\.com/`).Match([]byte(baseURI)) {
 		// for Claris FileMaker Cloud
 		exitStatus = 21
 		err = fmt.Errorf("%s", "Not Supported")
@@ -2984,7 +2984,7 @@ func login(baseURI string, user string, pass string, p params) (string, int, err
 		}
 
 		u, _ := url.Parse(baseURI)
-		u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth")
+		u.Path = path.Join(getAPIBasePath(), "user", "auth")
 
 		output := output{}
 		if p.identityFile == "" {
@@ -3148,7 +3148,7 @@ func detectPrivateKeyFormat(filePath string, keyFilePass string) ([]byte, string
 
 func logout(baseURI string, token string) {
 	u, _ := url.Parse(baseURI)
-	u.Path = path.Join(getAPIBasePath(baseURI), "user", "auth", token)
+	u.Path = path.Join(getAPIBasePath(), "user", "auth", token)
 	sendRequest("DELETE", u.String(), token, params{})
 }
 
@@ -3166,7 +3166,7 @@ func getResultCode(v interface{}) int {
 
 func listClients(urlString string, token string, id int) int {
 	usingCloud := false
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(urlString)) {
+	if regexp.MustCompile(`https://(.*)\.account\.filemaker-cloud\.com/`).Match([]byte(urlString)) {
 		usingCloud = true
 	}
 
@@ -3503,7 +3503,7 @@ func listPlugins(url string, token string) int {
 
 func listSchedules(urlString string, token string, id int) int {
 	usingCloud := false
-	if regexp.MustCompile(`https://(.*).account.filemaker-cloud.com`).Match([]byte(urlString)) {
+	if regexp.MustCompile(`https://(.*)\.account\.filemaker-cloud\.com/`).Match([]byte(urlString)) {
 		usingCloud = true
 	}
 
@@ -3669,19 +3669,19 @@ func getScheduleName(url string, token string, id int) string {
 	return ""
 }
 
-func sendMessages(u *url.URL, baseURI string, token string, message string, cmdArgs []string, clientID int) int {
+func sendMessages(u *url.URL, token string, message string, cmdArgs []string, clientID int) int {
 	var exitStatus int
 
 	args := []string{""}
 	if len(cmdArgs[1:]) > 0 {
 		args = cmdArgs[1:]
 	}
-	u.Path = path.Join(getAPIBasePath(baseURI), "clients")
-	idList := getClients(u.String(), token, args, "NORMAL")
+	u.Path = path.Join(getAPIBasePath(), "clients")
+	idList := getClients(u.String(), token, args)
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
 			if clientID == -1 || clientID == idList[i] {
-				u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(idList[i]), "message")
+				u.Path = path.Join(getAPIBasePath(), "clients", strconv.Itoa(idList[i]), "message")
 				exitStatus = sendMessage(u.String(), token, message)
 			}
 			if clientID > 0 {
@@ -3769,7 +3769,7 @@ func getDatabases(url string, token string, arg []string, status string, fullPat
 			folderName = ""
 			if len(arg) > 0 {
 				fileName = arg[j]
-				if strings.Index(fileName, string(os.PathSeparator)) > -1 {
+				if strings.Contains(fileName, string(os.PathSeparator)) {
 					folderName = fileName
 				}
 			}
@@ -3845,7 +3845,7 @@ func getDatabases(url string, token string, arg []string, status string, fullPat
 	return idList, nameList, hintList
 }
 
-func getClients(url string, token string, arg []string, status string) []int {
+func getClients(url string, token string, arg []string) []int {
 	var fileName string
 	var folderName string
 	var idList []int
@@ -3880,7 +3880,7 @@ func getClients(url string, token string, arg []string, status string) []int {
 		folderName = ""
 		if len(arg) > 0 {
 			fileName = arg[i]
-			if strings.Index(fileName, string(os.PathSeparator)) > -1 {
+			if strings.Contains(fileName, string(os.PathSeparator)) {
 				folderName = fileName
 			}
 		}
@@ -4119,11 +4119,11 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 		return false, 3, err
 	}
 
-	if u.Path == path.Join(getAPIBasePath(urlString), "server", "config", "security") {
+	if u.Path == path.Join(getAPIBasePath(), "server", "config", "security") {
 		err = scan.ScanTree(v, "/response/requireSecureDB", &enabled)
-	} else if u.Path == path.Join(getAPIBasePath(urlString), "server", "config", "parallelbackup") {
+	} else if u.Path == path.Join(getAPIBasePath(), "server", "config", "parallelbackup") {
 		err = scan.ScanTree(v, "/response/parallelBackupEnabled", &enabled)
-	} else if u.Path == path.Join(getAPIBasePath(urlString), "server", "config", "blocknewusers") {
+	} else if u.Path == path.Join(getAPIBasePath(), "server", "config", "blocknewusers") {
 		err = scan.ScanTree(v, "/response/blockNewUsers", &enabled)
 	}
 
@@ -4341,18 +4341,18 @@ func getPersistentCacheConfigurations(urlString string, token string, printOptio
 	return settings, result, err
 }
 
-func disconnectAllClient(u *url.URL, baseURI string, token string, message string, graceTime int) (int, error) {
+func disconnectAllClient(u *url.URL, token string, message string, graceTime int) (int, error) {
 	exitStatus := 0
 	var err error
 
 	// check the client connection
-	u.Path = path.Join(getAPIBasePath(baseURI), "clients")
-	idList := getClients(u.String(), token, []string{""}, "NORMAL")
+	u.Path = path.Join(getAPIBasePath(), "clients")
+	idList := getClients(u.String(), token, []string{""})
 
 	// disconnect clients
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
-			u.Path = path.Join(getAPIBasePath(baseURI), "clients", strconv.Itoa(idList[i]))
+			u.Path = path.Join(getAPIBasePath(), "clients", strconv.Itoa(idList[i]))
 			u.RawQuery = "messageText=" + url.QueryEscape(message) + "&graceTime=" + url.QueryEscape(strconv.Itoa(graceTime))
 			exitStatus, _, err = sendRequest("DELETE", u.String(), token, params{command: "disconnect"})
 			if err != nil {
@@ -4364,20 +4364,20 @@ func disconnectAllClient(u *url.URL, baseURI string, token string, message strin
 	return exitStatus, err
 }
 
-func stopDatabaseServer(u *url.URL, baseURI string, token string, message string, graceTime int) (int, error) {
+func stopDatabaseServer(u *url.URL, token string, message string, graceTime int) (int, error) {
 	exitStatus := -1
 	forceFlag := false
 	var err error
 
 	// disconnect clients
-	_, _ = disconnectAllClient(u, baseURI, token, message, graceTime)
+	_, _ = disconnectAllClient(u, token, message, graceTime)
 
 	// close databases
-	u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+	u.Path = path.Join(getAPIBasePath(), "databases")
 	idList, _, _ := getDatabases(u.String(), token, []string{""}, "NORMAL", false)
 	if len(idList) > 0 {
 		for i := 0; i < len(idList); i++ {
-			u.Path = path.Join(getAPIBasePath(baseURI), "databases", strconv.Itoa(idList[i]))
+			u.Path = path.Join(getAPIBasePath(), "databases", strconv.Itoa(idList[i]))
 			if graceTime == 0 {
 				forceFlag = true
 			}
@@ -4389,7 +4389,7 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 	for value := 0; ; {
 		time.Sleep(1 * time.Second)
 		value++
-		u.Path = path.Join(getAPIBasePath(baseURI), "databases")
+		u.Path = path.Join(getAPIBasePath(), "databases")
 		openedID, _, _ = getDatabases(u.String(), token, []string{""}, "CLOSING", false)
 		if len(openedID) == 0 || value > 120 {
 			break
@@ -4397,13 +4397,13 @@ func stopDatabaseServer(u *url.URL, baseURI string, token string, message string
 	}
 
 	// stop database server
-	u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+	u.Path = path.Join(getAPIBasePath(), "server", "status")
 	exitStatus, _, err = sendRequest("PATCH", u.String(), token, params{status: "STOPPED"})
 
 	return exitStatus, err
 }
 
-func waitStoppingServer(u *url.URL, baseURI string, token string) (int, error) {
+func waitStoppingServer(u *url.URL, token string) (int, error) {
 	exitStatus := 0
 	var err error
 	var running string
@@ -4411,7 +4411,7 @@ func waitStoppingServer(u *url.URL, baseURI string, token string) (int, error) {
 	for value := 0; ; {
 		time.Sleep(1 * time.Second)
 		value++
-		u.Path = path.Join(getAPIBasePath(baseURI), "server", "status")
+		u.Path = path.Join(getAPIBasePath(), "server", "status")
 		exitStatus, running, err = sendRequest("GET", u.String(), token, params{})
 		if running == "STOPPED" || value > 120 {
 			break

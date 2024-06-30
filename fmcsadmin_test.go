@@ -1686,8 +1686,7 @@ func TestGetBaseURI(t *testing.T) {
 }
 
 func TestGetAPIBasePath(t *testing.T) {
-	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("http://127.0.0.1:16001"))
-	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("https://example.jp"))
+	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath())
 }
 
 func TestGetServerVersionAsFloat(t *testing.T) {
