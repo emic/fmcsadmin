@@ -3985,7 +3985,7 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 			}
 			if option == "maxfiles" {
 				if version >= 20.1 {
-					fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-256] ")
+					fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 256, range: 1-256] ")
 				} else {
 					fmt.Println("MaxFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
 				}
@@ -3995,7 +3995,7 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 			}
 			if option == "hostedfiles" {
 				if version >= 20.1 {
-					fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-256] ")
+					fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 256, range: 1-256] ")
 				} else {
 					fmt.Println("HostedFiles = " + strconv.Itoa(maxFiles) + " [default: 125, range: 1-125] ")
 				}
