@@ -12,8 +12,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        go: [ '1.21' ]
+        # https://docs.github.com/ja/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
+        os: [ 'macos-latest' ]
+        go: [ '1.22' ]
     steps:
 
     - name: Setup go
@@ -22,7 +23,7 @@ jobs:
         cache: false
         go-version: ${{ matrix.go }}
 
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@v4
 
     - run: make dist
 
