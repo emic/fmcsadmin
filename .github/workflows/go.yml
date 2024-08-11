@@ -1,4 +1,4 @@
-name: build
+name: Build
 
 on: [ push, pull_request ]
 
@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-latest, macos-12, macos-13, macos-14, macos-latest, windows-2019, windows-2022, windows-latest ]
+        os: [ 'ubuntu-20.04', 'ubuntu-22.04', 'ubuntu-24.04', 'ubuntu-latest', 'macos-12', 'macos-13', 'macos-14', 'macos-latest', 'windows-2019', 'windows-2022', 'windows-latest' ]
         go: [ '1.22' ]
     steps:
 
@@ -44,7 +44,27 @@ jobs:
       shell: bash
       run: echo "GOSS_USE_ALPHA=1" >> "$GITHUB_ENV"
 
-    - if: runner.os == 'Linux' || runner.os == 'macOS'
+    - if: runner.os == 'Linux'
+      name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN_202506 }}
+
+    - if: runner.os == 'Linux'
+      name: Pull from GitHub Container Registry
+      run: |
+           docker pull --platform=linux/amd64 ghcr.io/matsuo/goss:latest
+           docker run --platform=linux/amd64 --rm -i -v /$(pwd):/tmp ghcr.io/matsuo/goss:latest bash <<'EOF'
+           cd /go/src/github.com/goss-org/goss
+           cp ./release/goss-darwin-amd64 /tmp/goss-darwin-amd64
+           cp ./release/goss-darwin-arm64 /tmp/goss-darwin-arm64
+           cp ./release/goss-linux-amd64 /tmp/goss-linux-amd64
+           cp ./release/goss-linux-arm64 /tmp/goss-linux-arm64
+           EOF
+
+    - if: runner.os == 'macOS'
       run: |
            curl -L "https://github.com/goss-org/goss/archive/${{ env.goss_commit_hash }}.tar.gz" -o goss.tar.gz
            tar xzvf goss.tar.gz
@@ -65,7 +85,7 @@ jobs:
 
     - if: runner.os == 'Linux'
       run: |
-           OS=linux "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
+           OS=linux "./goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'macOS'
       run: |
@@ -80,15 +100,13 @@ jobs:
 
     - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
       name: Set up QEMU
-      uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3 # v3.0.0
+      uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
 
     - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
       run: |
            docker run --rm --env GOSS_COMMIT_HASH=${{ env.goss_commit_hash }} -i -v /$(pwd):/tmp arm64v8/ubuntu:22.04 bash <<'EOF'
            cd /tmp
            cp -p ./dist/linux-arm64/fmcsadmin ./fmcsadmin
-           "./goss-$GOSS_COMMIT_HASH/release/goss-linux-arm64" --gossfile tests/goss.yaml validate --format documentation
+           OS=linux "./goss-linux-arm64" --gossfile tests/goss.yaml validate --format documentation
            ./fmcsadmin -v
            EOF
-
-# based on: github.com/koron-go/_skeleton/.github/workflows/go.yml
