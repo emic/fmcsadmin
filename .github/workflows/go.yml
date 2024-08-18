@@ -57,7 +57,7 @@ jobs:
       run: |
            docker pull --platform=linux/amd64 ghcr.io/matsuo/goss:latest
            docker run --platform=linux/amd64 --rm -i -v /$(pwd):/tmp ghcr.io/matsuo/goss:latest bash <<'EOF'
-           cd /go/src/github.com/goss-org/goss
+           cd /root/go/src/github.com/goss-org/goss
            cp ./release/goss-darwin-amd64 /tmp/goss-darwin-amd64
            cp ./release/goss-darwin-arm64 /tmp/goss-darwin-arm64
            cp ./release/goss-linux-amd64 /tmp/goss-linux-amd64
@@ -85,7 +85,8 @@ jobs:
 
     - if: runner.os == 'Linux'
       run: |
-           OS=linux "./goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
+           ./goss-linux-amd64 --version
+           OS=linux ./goss-linux-amd64 --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'macOS'
       run: |
