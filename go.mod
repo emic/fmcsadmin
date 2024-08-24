@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.6
 
 require (
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/mattn/go-scan v0.0.0-20200228002420-2250e6e52487
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/stretchr/testify v1.8.2

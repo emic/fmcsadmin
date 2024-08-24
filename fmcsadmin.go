@@ -41,7 +41,7 @@ import (
 	"syscall"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt/v4"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/mattn/go-scan"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/term"
