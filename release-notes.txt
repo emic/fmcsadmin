@@ -10,16 +10,16 @@ Version: 2.2.0 (in development)
 - Update "GET SERVERPREFS" command to get blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs BlockNewUsersEnabled")
 - Update "SET SERVERPREFS" command to set blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs BlockNewUsersEnabled=true")
 - Update "SET SERVERPREFS" command to set persistent cache setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs PersistCacheEnabled=true")
-- Update "SET SERVERPREFS" command to set persistent cache sync setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs SyncPersistCache=true")
-- Update "SET SERVERPREFS" command to set database server auto restart setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs DatabaseServerAutoRestart=true")
+- Update "SET SERVERPREFS" command to set persistent cache sync setting for Claris FileMaker Server 2024 (21.0). To change the value of SyncPersistCache to true, the value of PersistCacheEnabled must be true. (Usage: "fmcsadmin set serverprefs SyncPersistCache=true")
 - Update "GET SERVERPREFS" command to get database server auto restart setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs DatabaseServerAutoRestart")
+- Update "SET SERVERPREFS" command to set database server auto restart setting for Claris FileMaker Server 2024 (21.0). To change the value of DatabaseServerAutoRestart to true, the value of PersistCacheEnabled must be true. (Usage: "fmcsadmin set serverprefs DatabaseServerAutoRestart=true")
 - Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs PersistCacheEnabled" or "fmcsadmin get serverprefs SyncPersistCache")
 - Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs SyncPersistCache")
 - Update "GET SERVERCONFIG" command and "GET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance for Claris FileMaker Server 2023 or later.
 - Update "SET SERVERCONFIG" command and "SET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance for Claris FileMaker Server 2023 or later.
 - Modify behavior of outputting error messages for invalid parameters when using "GET SERVERPREFS" and "SET SERVERPREFS" command.
 - Add support for Windows Server 2019 and Windows Server 2022.
-- Tested with Claris FileMaker Server 21.0.
+- Tested with Claris FileMaker Server 2024 (21.0).
 - Tested on macOS Sonoma 14.
 - Built with Go 1.22.
 - [INFO] Drop support for Claris FileMaker Server 19.3, 19.4 and 19.5.
