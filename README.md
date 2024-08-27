@@ -1,6 +1,6 @@
 fmcsadmin [![Build Status](https://github.com/emic/fmcsadmin/actions/workflows/go.yml/badge.svg)](https://github.com/emic/fmcsadmin/actions/workflows/go.yml)
 =========
-fmcsadmin is a command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
+fmcsadmin is a command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API. fmcsadmin supports public key authentication and remote server administration.
 
 Features
 -----
@@ -15,22 +15,20 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for FileMaker Server)
-- Restart a server process (for FileMaker Server)
-- Stop a server process (for FileMaker Server)
+- Start a server process
+- Restart a server process
+- Stop a server process
 - Retrieve server or CWP configuration settings
 - Change server or CWP configuration settings
-- List plug-ins (for FileMaker Server 19.2.1 or later)
-- Manage SSL certificates (for FileMaker Server 19.2.1 or later)
-- Move databases out of hosted folder (for FileMaker Server 19.3.1 or later)
-- View and change the setting for sharing streaming URLs (for FileMaker Server 19.3.2 or later)
-- Cancel the currently running backup (for FileMaker Server 19.5.1 or later)
-- View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
-- FileMaker Admin API PKI Authentication (for FileMaker Server 19.6.1 or later)
-- View the settings for the persistent cache (for FileMaker Server 2023 or later)
-- Change the settings for the persistent cache (for FileMaker Server 2024 or later)
-- View and change the setting for database server auto restarting (for FileMaker Server 2024 or later)
-- View and change the setting for blocking new users (for FileMaker Server 2024 or later)
+- List plug-ins
+- Manage SSL certificates
+- Move databases out of hosted folder
+- View and change the setting for sharing streaming URLs
+- Cancel the currently running backup
+- View and change the setting for parallel backup
+- FileMaker Admin API PKI Authentication
+- View and change the settings for the persistent cache (for FileMaker Server 2024)
+- View and change the setting for blocking new users (for FileMaker Server 2024)
 
 Supported Servers
 -----
