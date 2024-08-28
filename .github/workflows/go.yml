@@ -50,7 +50,7 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GHCR_TOKEN_202506 }}
+        password: ${{ secrets.GHCR_TOKEN_202507 }}
 
     - if: runner.os == 'Linux'
       name: Pull from GitHub Container Registry
