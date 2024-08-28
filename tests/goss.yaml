@@ -4,14 +4,14 @@ command:
     exec: "./fmcsadmin -v"
     exit-status: 0
     stdout:
-      - "2.2.0-dev"
+      - "2.2.0"
   {{end}}
 
   {{if eq .Env.OS "windows"}}
   print-version:
     exec: "fmcsadmin.exe -v"
     exit-status: 0
-    stdout: "fmcsadmin 2.2.0-dev\n"
+    stdout: "fmcsadmin 2.2.0\n"
   {{end}}
 
   {{if eq .Env.OS "darwin"}}
