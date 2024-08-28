@@ -77,7 +77,7 @@ func TestRun(t *testing.T) {
 
 	args = strings.Split("fmcsadmin get serverprefs invalidparameter", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 3, status)
+	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin get unknown", " ")
 	status = cli.Run(args)
@@ -146,7 +146,7 @@ func TestRun(t *testing.T) {
 
 	args = strings.Split("fmcsadmin set serverprefs invalidparameter=true", " ")
 	status = cli.Run(args)
-	assert.Equal(t, 3, status)
+	assert.Equal(t, 10001, status)
 
 	args = strings.Split("fmcsadmin set unknown", " ")
 	status = cli.Run(args)
@@ -1160,6 +1160,10 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs maxfiles maxguests
 	 * fmcsadmin get serverprefs AuthenticatedStream
 	 * fmcsadmin get serverprefs ParallelBackupEnabled
+	 * fmcsadmin get serverprefs PersistCacheEnabled
+	 * fmcsadmin get serverprefs SyncPersistCache
+	 * fmcsadmin get serverprefs DatabaseServerAutoRestart
+	 * fmcsadmin get serverprefs BlockNewUsersEnabled
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1621,11 +1625,19 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin --fqdn example.jp set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME set cwpconfig enablephp=true usefmphp=true
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set cwpconfig enablephp=true usefmphp=true
-	 * fmcsadmin set serverprefs maxguests=125 maxfiles=125
+	 * fmcsadmin set serverprefs maxguests=125 maxfiles=256
 	 * fmcsadmin set serverprefs AuthenticatedStream=1
 	 * fmcsadmin set serverprefs AuthenticatedStream=2
 	 * fmcsadmin set serverprefs ParallelBackupEnabled=false
 	 * fmcsadmin set serverprefs ParallelBackupEnabled=true
+	 * fmcsadmin set serverprefs PersistCacheEnabled=false
+	 * fmcsadmin set serverprefs PersistCacheEnabled=true
+	 * fmcsadmin set serverprefs SyncPersistCache=false
+	 * fmcsadmin set serverprefs SyncPersistCache=true
+	 * fmcsadmin set serverprefs DatabaseServerAutoRestart=false
+	 * fmcsadmin set serverprefs DatabaseServerAutoRestart=true
+	 * fmcsadmin set serverprefs BlockNewUsersEnabled=false
+	 * fmcsadmin set serverprefs BlockNewUsersEnabled=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100
@@ -1674,8 +1686,7 @@ func TestGetBaseURI(t *testing.T) {
 }
 
 func TestGetAPIBasePath(t *testing.T) {
-	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("http://127.0.0.1:16001"))
-	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath("https://example.jp"))
+	assert.Equal(t, "/fmi/admin/api/v2", getAPIBasePath())
 }
 
 func TestGetServerVersionAsFloat(t *testing.T) {

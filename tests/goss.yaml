@@ -1,0 +1,24 @@
+command:
+  {{if .Env.OS | regexMatch "(darwin|linux)"}}
+  print-version:
+    exec: "./fmcsadmin -v"
+    exit-status: 0
+    stdout:
+      - "2.2.0"
+  {{end}}
+
+  {{if eq .Env.OS "windows"}}
+  print-version:
+    exec: "fmcsadmin.exe -v"
+    exit-status: 0
+    stdout: "fmcsadmin 2.2.0\n"
+  {{end}}
+
+  {{if eq .Env.OS "darwin"}}
+  check-universal-binary-or-not:
+    exec: "file ./fmcsadmin"
+    exit-status: 0
+    stdout:
+      - "Mach-O 64-bit executable x86_64"
+      - "Mach-O 64-bit executable arm64"
+  {{end}}

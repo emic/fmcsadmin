@@ -1,6 +1,6 @@
 fmcsadmin [![Build Status](https://github.com/emic/fmcsadmin/actions/workflows/go.yml/badge.svg)](https://github.com/emic/fmcsadmin/actions/workflows/go.yml)
 =========
-fmcsadmin is a command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API. fmcsadmin supports remote server administration.
+fmcsadmin is a command line tool to administer the Database Server component of Claris FileMaker Server via Claris FileMaker Admin API. fmcsadmin supports public key authentication and remote server administration.
 
 Features
 -----
@@ -15,22 +15,27 @@ Features
 - Make paused databases available
 - Run a schedule
 - Send a message to clients
-- Start a server process (for FileMaker Server)
-- Restart a server process (for FileMaker Server)
-- Stop a server process (for FileMaker Server)
+- Start a server process
+- Restart a server process
+- Stop a server process
 - Retrieve server or CWP configuration settings
 - Change server or CWP configuration settings
-- List plug-ins (for FileMaker Server 19.2.1 or later)
-- Manage SSL certificates (for FileMaker Server 19.2.1 or later)
-- Move databases out of hosted folder (for FileMaker Server 19.3.1 or later)
-- View and change the setting for sharing streaming URLs (for FileMaker Server 19.3.2 or later)
-- Cancel the currently running backup (for FileMaker Server 19.5.1 or later)
-- View and change the setting for parallel backup (for FileMaker Server 19.5.1 or later)
-- FileMaker Admin API PKI Authentication (for FileMaker Server 19.6.1 or later)
+- List plug-ins
+- Manage SSL certificates
+- Move databases out of hosted folder
+- View and change the setting for sharing streaming URLs
+- Cancel the currently running backup
+- View and change the setting for parallel backup
+- FileMaker Admin API PKI Authentication
+- View and change the settings for the persistent cache (for FileMaker Server 2024)
+- View and change the setting for blocking new users (for FileMaker Server 2024)
 
 Supported Servers
 -----
-- Claris FileMaker Server 19 (19.3, 19.4, 19.5, 19.6)
+Please see details: https://support.claris.com/s/article/Claris-support-policy?language=en_US
+- Claris FileMaker Server 2024 (until June 2026)
+- Claris FileMaker Server 2023 (until Apr 2025)
+- Claris FileMaker Server 19.6 (until Dec 2024)
 
 Usage
 -----
@@ -48,11 +53,20 @@ You can script many tasks with fmcsadmin by using a scripting language that allo
 ```
 Note: Handling schedule ID 1 is not supported for FileMaker Server.
 
+Noteworthy Options
+-----
+- --fqdn (for remote server administration)
+- -i (for PKI authentication)
+
+```
+    fmcsadmin --fqdn fms.example.com -i /path/to/IDENTITYFILE list files
+```
+
 System Requirements
 -----
-- Linux version   : Ubuntu 18.04 LTS, Ubuntu 20.04 LTS or CentOS Linux 7
-- macOS version   : macOS Big Sur 11 or later (tested on macOS Ventura 13)
-- Windows version : Windows 10 Version 21H2 or later (tested on Windows 11)
+- Linux version   : Ubuntu 20.04 LTS, Ubuntu 22.04 LTS or Ubuntu 22.04 LTS for ARM
+- macOS version   : macOS Monterey 12, macOS Ventura 13 or macOS Sonoma 14
+- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2 or Windows 11
 
 Download
 -----

@@ -1,6 +1,34 @@
 fmcsadmin
-(c) 2017-2023 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2024 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
+
+Version: 2.2.0
+Date: August 28, 2024
+- Add support for Claris FileMaker Server 2024 (21.0).
+- Add support for Claris FileMaker Server 2023 (20.1, 20.2 and 20.3).
+- Add support for Ubuntu 22.04 LTS (on amd64 architecture).
+- Add support for Ubuntu 22.04 LTS on arm64 architecture.
+- Update "GET SERVERPREFS" command to get blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs BlockNewUsersEnabled")
+- Update "SET SERVERPREFS" command to set blocking new users setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs BlockNewUsersEnabled=true")
+- Update "SET SERVERPREFS" command to set persistent cache setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin set serverprefs PersistCacheEnabled=true")
+- Update "SET SERVERPREFS" command to set persistent cache sync setting for Claris FileMaker Server 2024 (21.0). To change the value of SyncPersistCache to true, the value of PersistCacheEnabled must be true. (Usage: "fmcsadmin set serverprefs SyncPersistCache=true")
+- Update "GET SERVERPREFS" command to get database server auto restart setting for Claris FileMaker Server 2024 (21.0). (Usage: "fmcsadmin get serverprefs DatabaseServerAutoRestart")
+- Update "SET SERVERPREFS" command to set database server auto restart setting for Claris FileMaker Server 2024 (21.0). To change the value of DatabaseServerAutoRestart to true, the value of PersistCacheEnabled must be true. (Usage: "fmcsadmin set serverprefs DatabaseServerAutoRestart=true")
+- Update "GET SERVERPREFS" command to get persistent cache setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs PersistCacheEnabled" or "fmcsadmin get serverprefs SyncPersistCache")
+- Update "GET SERVERPREFS" command to get persistent cache sync setting for Claris FileMaker Server 2023 (20.1) or later. (Usage: "fmcsadmin get serverprefs SyncPersistCache")
+- Update "GET SERVERCONFIG" command and "GET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance for Claris FileMaker Server 2023 or later.
+- Update "SET SERVERCONFIG" command and "SET SERVERPREFS" command due to increasing the maximum number of hosted database files per FileMaker Server instance for Claris FileMaker Server 2023 or later.
+- Modify behavior of outputting error messages for invalid parameters when using "GET SERVERPREFS" and "SET SERVERPREFS" command.
+- Add support for Windows Server 2019 and Windows Server 2022.
+- Tested with Claris FileMaker Server 2024 (21.0).
+- Tested on macOS Sonoma 14.
+- Built with Go 1.22.
+- [INFO] Drop support for Claris FileMaker Server 19.3, 19.4 and 19.5.
+- [INFO] Drop support for Ubuntu 18.04 LTS.
+- [INFO] Drop support for CentOS Linux 7.
+- [INFO] Drop support for Windows 10 Version 21H2.
+- [INFO] Drop support for macOS Big Sur 11.
+- [BUG FIX] Fix "SET SERVERPREFS" command was not executed correctly in some cases.
 
 Version: 2.1.0
 Date: May 17, 2023
