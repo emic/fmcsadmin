@@ -27,7 +27,7 @@ jobs:
     - run: go test
 
     - shell: bash
-      run: echo "fmcsadmin_version=2.2.0" >> "$GITHUB_ENV"
+      run: echo "fmcsadmin_version=2.2.1-dev" >> "$GITHUB_ENV"
 
     - run: go build -ldflags "-X main.version=${{ env.fmcsadmin_version }}" fmcsadmin.go
 
