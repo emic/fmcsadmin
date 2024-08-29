@@ -14,11 +14,11 @@ jobs:
       matrix:
         # https://docs.github.com/ja/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
         os: [ 'macos-latest' ]
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
 
     - name: Setup go
-      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         cache: false
         go-version: ${{ matrix.go }}

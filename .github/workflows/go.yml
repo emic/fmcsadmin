@@ -12,11 +12,11 @@ jobs:
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
         os: [ 'ubuntu-20.04', 'ubuntu-22.04', 'ubuntu-24.04', 'ubuntu-latest', 'macos-13', 'macos-14', 'macos-latest', 'windows-2019', 'windows-2022', 'windows-latest' ]
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
 
     - name: Setup go
-      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         cache: false
         go-version: ${{ matrix.go }}
