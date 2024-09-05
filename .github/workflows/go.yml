@@ -44,7 +44,7 @@ jobs:
       shell: bash
       run: echo "GOSS_USE_ALPHA=1" >> "$GITHUB_ENV"
 
-    - if: runner.os == 'Linux'
+    - if: runner.os == 'Linux' && (github.repository_owner == 'emic' || github.repository_owner == 'matsuo')
       name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
@@ -52,7 +52,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GHCR_TOKEN_202507 }}
 
-    - if: runner.os == 'Linux'
+    - if: runner.os == 'Linux' && (github.repository_owner == 'emic' || github.repository_owner == 'matsuo')
       name: Pull from GitHub Container Registry
       run: |
            docker pull --platform=linux/amd64 ghcr.io/matsuo/goss:latest
@@ -64,7 +64,7 @@ jobs:
            cp ./release/goss-linux-arm64 /tmp/goss-linux-arm64
            EOF
 
-    - if: runner.os == 'macOS'
+    - if: runner.os == 'macOS' || (runner.os == 'Linux' && !(github.repository_owner == 'emic' || github.repository_owner == 'matsuo'))
       run: |
            curl -L "https://github.com/goss-org/goss/archive/${{ env.goss_commit_hash }}.tar.gz" -o goss.tar.gz
            tar xzvf goss.tar.gz
@@ -83,10 +83,14 @@ jobs:
            mv goss-windows-amd64.exe release/
            cd ..
 
-    - if: runner.os == 'Linux'
+    - if: runner.os == 'Linux' && (github.repository_owner == 'emic' || github.repository_owner == 'matsuo')
       run: |
            ./goss-linux-amd64 --version
            OS=linux ./goss-linux-amd64 --gossfile tests/goss.yaml validate --format documentation
+
+    - if: runner.os == 'Linux' && !(github.repository_owner == 'emic' || github.repository_owner == 'matsuo')
+      run: |
+           OS=linux "./goss-${{ env.goss_commit_hash }}/release/goss-linux-amd64" --gossfile tests/goss.yaml validate --format documentation
 
     - if: runner.os == 'macOS'
       run: |
