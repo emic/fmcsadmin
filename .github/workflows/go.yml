@@ -115,3 +115,21 @@ jobs:
            OS=linux "./goss-linux-arm64" --gossfile tests/goss.yaml validate --format documentation
            ./fmcsadmin -v
            EOF
+
+    - name: Create dmg format file for macOS
+      if: runner.os == 'macOS'
+      run: |
+        lipo -info "dist/fmcsadmin-${{ env.fmcsadmin_version }}-macos/fmcsadmin"
+        cd "dist/fmcsadmin-${{ env.fmcsadmin_version }}-macos"
+        pkgbuild --root . --identifier jp.co.emic.fmcsadmin --version "${{ env.fmcsadmin_version }}" --install-location /usr/local/bin ../fmcsadmin.pkg
+        cd ..
+        cp -p ../{LICENSE.txt,README.md,NOTICE.txt,release-notes.txt} .
+        cp -p ../macOS/{Distribution.xml,welcome.txt} .
+        productbuild --distribution Distribution.xml --resources . --package-path fmcsadmin.pkg "fmcsadmin-${{ env.fmcsadmin_version }}-unsigned.pkg"
+        cp -p "fmcsadmin-${{ env.fmcsadmin_version }}-unsigned.pkg" "fmcsadmin-${{ env.fmcsadmin_version }}.pkg"
+        mkdir macos-dist
+        mv "fmcsadmin-${{ env.fmcsadmin_version }}.pkg" macos-dist/
+        mv {LICENSE.txt,README.md,NOTICE.txt,release-notes.txt} macos-dist/
+        cd macos-dist
+        cd ..
+        hdiutil create -srcfolder ./macos-dist/ -fs HFS+ -format UDZO -volname "fmcsadmin-${{ env.fmcsadmin_version }}" "fmcsadmin-${{ env.fmcsadmin_version }}-macos.dmg"
