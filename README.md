@@ -66,7 +66,7 @@ System Requirements
 -----
 - Linux version   : Ubuntu 20.04 LTS, Ubuntu 22.04 LTS or Ubuntu 22.04 LTS for ARM
 - macOS version   : macOS Ventura 13 or macOS Sonoma 14
-- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2 or Windows 11
+- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2, Windows 11 Version 22H2 or later
 
 Download
 -----
