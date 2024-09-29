@@ -5,6 +5,7 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 Version: 2.3.0-dev (in development)
 - Add support for macOS Sequoia 15.
 - Built with Go 1.23.
+- [INFO] Drop support for Claris FileMaker Server 19.6.
 - [INFO] Drop support for macOS Monterey 12.
 - [INFO] Drop support for Windows 11 Version 21H2.
 

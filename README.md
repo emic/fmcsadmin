@@ -35,7 +35,6 @@ Supported Servers
 Please see details: https://support.claris.com/s/article/Claris-support-policy?language=en_US
 - Claris FileMaker Server 2024 (until June 2026)
 - Claris FileMaker Server 2023 (until Apr 2025)
-- Claris FileMaker Server 19.6 (until Dec 2024)
 
 Usage
 -----
