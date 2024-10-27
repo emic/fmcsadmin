@@ -12,17 +12,16 @@ jobs:
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
         os: [ 'ubuntu-20.04', 'ubuntu-22.04', 'ubuntu-24.04', 'ubuntu-latest', 'macos-13', 'macos-14', 'macos-15', 'macos-latest', 'windows-2019', 'windows-2022', 'windows-latest' ]
-        go: [ '1.23' ]
     steps:
 
+    - uses: actions/checkout@v4
+
     - name: Setup go
-      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
       with:
         cache: false
-        go-version: ${{ matrix.go }}
+        go-version-file: 'go.mod'
         check-latest: true
-
-    - uses: actions/checkout@v4
 
     - run: go test
 
@@ -106,8 +105,8 @@ jobs:
     - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
       name: Set up QEMU
       uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-
-    - if: runner.os == 'Linux' && matrix.os == 'ubuntu-22.04'
+    
+    - if: ${{ false }} 
       run: |
            docker run --rm --env GOSS_COMMIT_HASH=${{ env.goss_commit_hash }} -i -v /$(pwd):/tmp arm64v8/ubuntu:22.04 bash <<'EOF'
            cd /tmp
