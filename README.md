@@ -29,6 +29,7 @@ Features
 - FileMaker Admin API PKI Authentication
 - View and change the settings for the persistent cache (for FileMaker Server 2024)
 - View and change the setting for blocking new users (for FileMaker Server 2024)
+- View the setting for opening the databases that were opened when the database server was last shut down (for FileMaker Server 2024 (21.1))
 
 Supported Servers
 -----

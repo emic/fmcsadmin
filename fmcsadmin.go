@@ -1076,6 +1076,7 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
 								}
@@ -1130,6 +1131,8 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "databaseserverautorestart")
 										case "blocknewusersenabled":
 											printOptions = append(printOptions, "blocknewusersenabled")
+										case "onlyopenlastopeneddatabases":
+											printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 										default:
 											exitStatus = 10001
 										}
@@ -1157,6 +1160,9 @@ func (c *cli) Run(args []string) int {
 									if !usingCloud && version >= 21.0 {
 										printOptions = append(printOptions, "databaseserverautorestart")
 										printOptions = append(printOptions, "blocknewusersenabled")
+									}
+									if !usingCloud && version >= 21.1 {
+										printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 									}
 								}
 
@@ -1216,6 +1222,18 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 21.0 {
+												exitStatus = 3
+											}
+										}
+									}
+
+									if option == "onlyopenlastopeneddatabases" {
+										if usingCloud {
+											// for Claris FileMaker Cloud
+											exitStatus = 3
+										} else {
+											// for Claris FileMaker Server
+											if version < 21.1 {
 												exitStatus = 3
 											}
 										}
@@ -3927,6 +3945,10 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 	var maxProConnections int
 	var maxPSOS int
 	var startupRestorationEnabled bool
+	var onlyOpenLastOpenedDatabases bool
+
+	versionString, _ := getServerVersionString(strings.Replace(urlString, "/config/general", "/metadata", 1), token)
+	version, _ := getServerVersionAsFloat(versionString)
 
 	body, _, err := callURL("GET", urlString, token, nil)
 	if err != nil {
@@ -3974,8 +3996,15 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 		settings = append(settings, -1)
 	}
 
-	versionString, _ := getServerVersionString(strings.Replace(urlString, "/config/general", "/metadata", 1), token)
-	version, _ := getServerVersionAsFloat(versionString)
+	if version >= 21.1 {
+		// for Claris FileMaker Server 21.1.1 or later
+		_ = scan.ScanTree(v, "/response/onlyOpenLastOpenedDatabases", &onlyOpenLastOpenedDatabases)
+		if onlyOpenLastOpenedDatabases {
+			settings = append(settings, 1)
+		} else {
+			settings = append(settings, 0)
+		}
+	}
 
 	// output
 	if result == 0 {
@@ -4048,6 +4077,16 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 			if option == "blocknewusersenabled" {
 				if version >= 21.0 {
 					getServerSettingAsBool(strings.Replace(urlString, "/general", "/blocknewusers", 1), token, []string{option})
+				}
+			}
+
+			if option == "onlyopenlastopeneddatabases" {
+				if version >= 21.1 {
+					if onlyOpenLastOpenedDatabases {
+						fmt.Println("OnlyOpenLastOpenedDatabases = true [default: false] ")
+					} else {
+						fmt.Println("OnlyOpenLastOpenedDatabases = false [default: false] ")
+					}
 				}
 			}
 		}
