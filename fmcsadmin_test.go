@@ -1164,6 +1164,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs SyncPersistCache
 	 * fmcsadmin get serverprefs DatabaseServerAutoRestart
 	 * fmcsadmin get serverprefs BlockNewUsersEnabled
+	 * fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD get backuptime
@@ -1638,6 +1639,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin set serverprefs DatabaseServerAutoRestart=true
 	 * fmcsadmin set serverprefs BlockNewUsersEnabled=false
 	 * fmcsadmin set serverprefs BlockNewUsersEnabled=true
+	 * fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=false
+	 * fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME set serverconfig hostedfiles=125 scriptsessions=100
 	 * fmcsadmin --fqdn example.jp -u USERNAME -p PASSWORD set serverconfig hostedfiles=125 scriptsessions=100

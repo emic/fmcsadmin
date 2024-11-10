@@ -79,6 +79,14 @@ type generalConfigInfo struct {
 	MaxPSOS           int `json:"maxPSOS"`
 }
 
+type general211ConfigInfo struct {
+	CacheSize                   int  `json:"cacheSize"`
+	MaxFiles                    int  `json:"maxFiles"`
+	MaxProConnections           int  `json:"maxProConnections"`
+	MaxPSOS                     int  `json:"maxPSOS"`
+	OnlyOpenLastOpenedDatabases bool `json:"onlyOpenLastOpenedDatabases"`
+}
+
 type securityConfigInfo struct {
 	RequireSecureDB bool `json:"requireSecureDB"`
 }
@@ -150,38 +158,39 @@ type importingCertificateInfo struct {
 }
 
 type params struct {
-	command                   string
-	key                       string
-	messageText               string
-	force                     bool
-	retry                     int
-	status                    string
-	enabled                   string
-	cachesize                 int
-	maxfiles                  int
-	maxproconnections         int
-	maxpsos                   int
-	startuprestorationenabled bool
-	startuprestorationbuiltin bool
-	requiresecuredb           string
-	authenticatedstream       int
-	parallelbackupenabled     string
-	persistcacheenabled       string
-	syncpersistcache          string
-	databaseserverautorestart string
-	blocknewusersenabled      string
-	characterencoding         string
-	errormessagelanguage      string
-	dataprevalidation         bool
-	usefilemakerphp           bool
-	saveKey                   bool
-	subject                   string
-	password                  string
-	certificate               string
-	privateKey                string
-	intermediateCertificates  string
-	printRefreshToken         bool
-	identityFile              string
+	command                     string
+	key                         string
+	messageText                 string
+	force                       bool
+	retry                       int
+	status                      string
+	enabled                     string
+	cachesize                   int
+	maxfiles                    int
+	maxproconnections           int
+	maxpsos                     int
+	startuprestorationenabled   bool
+	startuprestorationbuiltin   bool
+	requiresecuredb             string
+	authenticatedstream         int
+	parallelbackupenabled       string
+	persistcacheenabled         string
+	syncpersistcache            string
+	databaseserverautorestart   string
+	blocknewusersenabled        string
+	onlyopenlastopeneddatabases string
+	characterencoding           string
+	errormessagelanguage        string
+	dataprevalidation           bool
+	usefilemakerphp             bool
+	saveKey                     bool
+	subject                     string
+	password                    string
+	certificate                 string
+	privateKey                  string
+	intermediateCertificates    string
+	printRefreshToken           bool
+	identityFile                string
 }
 
 type commandOptions struct {
@@ -2026,6 +2035,7 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
 								}
@@ -2119,8 +2129,9 @@ func (c *cli) Run(args []string) int {
 									syncPersistCache := results[9]
 									databaseServerAutoRestart := results[10]
 									blockNewUsersEnabled := results[11]
+									onlyOpenLastOpenedDatabases := results[12]
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" || results[12] != "" {
 										if results[0] == "" {
 											cacheSize = settings[0]
 										} else {
@@ -2237,6 +2248,12 @@ func (c *cli) Run(args []string) int {
 														} else {
 															exitStatus = 3
 														}
+													case "onlyopenlastopeneddatabases":
+														if version >= 21.1 {
+															printOptions = append(printOptions, "onlyopenlastopeneddatabases")
+														} else {
+															exitStatus = 3
+														}
 													default:
 														exitStatus = 3
 													}
@@ -2266,18 +2283,22 @@ func (c *cli) Run(args []string) int {
 												printOptions = append(printOptions, "databaseserverautorestart")
 												printOptions = append(printOptions, "blocknewusersenabled")
 											}
+											if version >= 21.1 {
+												printOptions = append(printOptions, "onlyopenlastopeneddatabases")
+											}
 										}
 										if exitStatus == 0 {
-											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
+											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || results[12] != "" {
 												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-													command:                   "set",
-													cachesize:                 cacheSize,
-													maxfiles:                  maxFiles,
-													maxproconnections:         maxProConnections,
-													maxpsos:                   maxPSOS,
-													startuprestorationenabled: startupRestoration,
-													startuprestorationbuiltin: startupRestorationBuiltin,
+													command:                     "set",
+													cachesize:                   cacheSize,
+													maxfiles:                    maxFiles,
+													maxproconnections:           maxProConnections,
+													maxpsos:                     maxPSOS,
+													startuprestorationenabled:   startupRestoration,
+													startuprestorationbuiltin:   startupRestorationBuiltin,
+													onlyopenlastopeneddatabases: onlyOpenLastOpenedDatabases,
 												})
 											}
 
@@ -2725,6 +2746,7 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	syncPersistCache := ""
 	databaseServerAutoRestart := ""
 	blockNewUsersEnabled := ""
+	onlyOpenLastOpenedDatabases := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2816,6 +2838,14 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 			} else {
 				blockNewUsersEnabled = "false"
 			}
+		} else if regexp.MustCompile(`onlyopenlastopeneddatabases=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "onlyopenlastopeneddatabases=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "onlyopenlastopeneddatabases=true" || (regexp.MustCompile(`onlyopenlastopeneddatabases=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "onlyopenlastopeneddatabases=0" && str[i] != "onlyopenlastopeneddatabases=+0" && str[i] != "onlyopenlastopeneddatabases=-0") {
+				onlyOpenLastOpenedDatabases = "true"
+			} else {
+				onlyOpenLastOpenedDatabases = "false"
+			}
 		} else {
 			exitStatus = 10001
 		}
@@ -2833,6 +2863,7 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	results = append(results, syncPersistCache)
 	results = append(results, databaseServerAutoRestart)
 	results = append(results, blockNewUsersEnabled)
+	results = append(results, onlyOpenLastOpenedDatabases)
 
 	return results, exitStatus
 }
@@ -4183,6 +4214,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 				fmt.Println("ParallelBackupEnabled = " + enabledStr + " [default: false] ")
 			case "blocknewusersenabled":
 				fmt.Println("BlockNewUsersEnabled = " + enabledStr + " [default: false] ")
+			case "onlyopenlastopeneddatabases":
+				fmt.Println("OnlyOpenLastOpenedDatabases = " + enabledStr + " [default: false] ")
 			default:
 			}
 		}
@@ -4743,7 +4776,22 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 				blocknewusersenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/server/config/general") && p.onlyopenlastopeneddatabases != "" {
+			// for Claris FileMaker Server 21.1.1 or later
+			onlyopenlastopeneddatabases := false
+			if p.onlyopenlastopeneddatabases == "true" {
+				onlyopenlastopeneddatabases = true
+			}
+			d := general211ConfigInfo{
+				p.cachesize,
+				p.maxfiles,
+				p.maxproconnections,
+				p.maxpsos,
+				onlyopenlastopeneddatabases,
+			}
+			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin {
+			// for Claris FileMaker Server 19.1.1 or previous
 			d := generalOldConfigInfo{
 				p.cachesize,
 				p.maxfiles,

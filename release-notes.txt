@@ -5,7 +5,8 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 Version: 2.3.0-dev (in development)
 - Add support for Claris FileMaker Server 2024 (21.1).
 - Add support for macOS Sequoia 15.
-- Update "GET SERVERPREFS" command to open the databases that were opened when the database server was last shut down for Claris FileMaker Server 2024 (21.1). (Usage: "fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases")
+- Update "GET SERVERPREFS" command to view the "Only open last opened databases" setting for Claris FileMaker Server 2024 (21.1). (Usage: "fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases")
+- Update "SET SERVERPREFS" command to open only the databases that were opened when the database server was last shut down for Claris FileMaker Server 2024 (21.1). (Usage: "fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=true")
 - Built with Go 1.23.
 - [INFO] Drop support for Claris FileMaker Server 19.6.
 - [INFO] Drop support for macOS Monterey 12.
