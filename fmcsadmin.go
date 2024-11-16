@@ -1085,6 +1085,7 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "enablehttpprotocolnetwork":
 								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
@@ -1140,6 +1141,8 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "databaseserverautorestart")
 										case "blocknewusersenabled":
 											printOptions = append(printOptions, "blocknewusersenabled")
+										case "enablehttpprotocolnetwork":
+											printOptions = append(printOptions, "enablehttpprotocolnetwork")
 										case "onlyopenlastopeneddatabases":
 											printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 										default:
@@ -1171,6 +1174,7 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "blocknewusersenabled")
 									}
 									if !usingCloud && version >= 21.1 {
+										printOptions = append(printOptions, "enablehttpprotocolnetwork")
 										printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 									}
 								}
@@ -1236,7 +1240,7 @@ func (c *cli) Run(args []string) int {
 										}
 									}
 
-									if option == "onlyopenlastopeneddatabases" {
+									if option == "enablehttpprotocolnetwork" || option == "onlyopenlastopeneddatabases" {
 										if usingCloud {
 											// for Claris FileMaker Cloud
 											exitStatus = 3
@@ -4111,6 +4115,12 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 				}
 			}
 
+			if option == "enablehttpprotocolnetwork" {
+				if version >= 21.1 {
+					getServerSettingAsBool(strings.Replace(urlString, "/server/config/general", "/fmclients/httpstunneling", 1), token, []string{option})
+				}
+			}
+
 			if option == "onlyopenlastopeneddatabases" {
 				if version >= 21.1 {
 					if onlyOpenLastOpenedDatabases {
@@ -4195,6 +4205,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 		err = scan.ScanTree(v, "/response/parallelBackupEnabled", &enabled)
 	} else if u.Path == path.Join(getAPIBasePath(), "server", "config", "blocknewusers") {
 		err = scan.ScanTree(v, "/response/blockNewUsers", &enabled)
+	} else if u.Path == path.Join(getAPIBasePath(), "fmclients", "httpstunneling") {
+		err = scan.ScanTree(v, "/response/enableHTTPSTunneling", &enabled)
 	}
 
 	enabledStr = "false"
@@ -4214,6 +4226,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 				fmt.Println("ParallelBackupEnabled = " + enabledStr + " [default: false] ")
 			case "blocknewusersenabled":
 				fmt.Println("BlockNewUsersEnabled = " + enabledStr + " [default: false] ")
+			case "enablehttpprotocolnetwork":
+				fmt.Println("EnableHttpProtocolNetwork = " + enabledStr + " [default: false] ")
 			case "onlyopenlastopeneddatabases":
 				fmt.Println("OnlyOpenLastOpenedDatabases = " + enabledStr + " [default: false] ")
 			default:

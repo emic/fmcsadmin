@@ -1164,6 +1164,7 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin get serverprefs SyncPersistCache
 	 * fmcsadmin get serverprefs DatabaseServerAutoRestart
 	 * fmcsadmin get serverprefs BlockNewUsersEnabled
+	 * fmcsadmin get serverprefs EnableHttpProtocolNetwork
 	 * fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases
 	 * fmcsadmin --fqdn example.jp get backuptime
 	 * fmcsadmin --fqdn example.jp -u USERNAME get backuptime
