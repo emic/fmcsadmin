@@ -1,11 +1,11 @@
-FROM --platform=linux/x86_64 ubuntu:22.04
+FROM --platform=linux/x86_64 ubuntu:24.04
 
 RUN apt update && apt install -y curl tar make bash git build-essential
 
 # Install Go
 WORKDIR /root
 
-RUN curl -LO https://go.dev/dl/go1.22.7.linux-amd64.tar.gz && tar -C /tmp -xzf go1.22.7.linux-amd64.tar.gz && rm -f /root/go1.22.7.linux-amd64.tar.gz && mv /tmp/go go1.22
+RUN curl -LO https://go.dev/dl/go1.22.10.linux-amd64.tar.gz && tar -C /tmp -xzf go1.22.10.linux-amd64.tar.gz && rm -f /root/go1.22.10.linux-amd64.tar.gz && mv /tmp/go go1.22
 
 WORKDIR /root/go/src/go.googlesource.com/go
 
