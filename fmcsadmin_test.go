@@ -1640,6 +1640,8 @@ func TestGetFlags(t *testing.T) {
 	 * fmcsadmin set serverprefs DatabaseServerAutoRestart=true
 	 * fmcsadmin set serverprefs BlockNewUsersEnabled=false
 	 * fmcsadmin set serverprefs BlockNewUsersEnabled=true
+	 * fmcsadmin set serverprefs EnableHttpProtocolNetwork=false
+	 * fmcsadmin set serverprefs EnableHttpProtocolNetwork=true
 	 * fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=false
 	 * fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=true
 	 * fmcsadmin --fqdn example.jp set serverconfig hostedfiles=125 scriptsessions=100

@@ -109,6 +109,10 @@ type blockNewUsersConfigInfo struct {
 	BlockNewUsersEnabled bool `json:"blockNewUsers"`
 }
 
+type enableHttpProtocolNetworkConfigInfo struct {
+	EnableHttpProtocolNetwork bool `json:"enableHTTPSTunneling"`
+}
+
 type phpConfigInfo struct {
 	Enabled              bool   `json:"enabled"`
 	CharacterEncoding    string `json:"characterEncoding"`
@@ -178,6 +182,7 @@ type params struct {
 	syncpersistcache            string
 	databaseserverautorestart   string
 	blocknewusersenabled        string
+	enablehttpprotocolnetwork   string
 	onlyopenlastopeneddatabases string
 	characterencoding           string
 	errormessagelanguage        string
@@ -2039,6 +2044,7 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "enablehttpprotocolnetwork":
 								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
@@ -2133,9 +2139,10 @@ func (c *cli) Run(args []string) int {
 									syncPersistCache := results[9]
 									databaseServerAutoRestart := results[10]
 									blockNewUsersEnabled := results[11]
-									onlyOpenLastOpenedDatabases := results[12]
+									enableHttpProtocolNetwork := results[12]
+									onlyOpenLastOpenedDatabases := results[13]
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" || results[12] != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" || enableHttpProtocolNetwork != "" || onlyOpenLastOpenedDatabases != "" {
 										if results[0] == "" {
 											cacheSize = settings[0]
 										} else {
@@ -2252,6 +2259,12 @@ func (c *cli) Run(args []string) int {
 														} else {
 															exitStatus = 3
 														}
+													case "enablehttpprotocolnetwork":
+														if version >= 21.1 {
+															printOptions = append(printOptions, "enablehttpprotocolnetwork")
+														} else {
+															exitStatus = 3
+														}
 													case "onlyopenlastopeneddatabases":
 														if version >= 21.1 {
 															printOptions = append(printOptions, "onlyopenlastopeneddatabases")
@@ -2288,11 +2301,12 @@ func (c *cli) Run(args []string) int {
 												printOptions = append(printOptions, "blocknewusersenabled")
 											}
 											if version >= 21.1 {
+												printOptions = append(printOptions, "enablehttpprotocolnetwork")
 												printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 											}
 										}
 										if exitStatus == 0 {
-											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || results[12] != "" {
+											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || results[13] != "" {
 												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
 													command:                     "set",
@@ -2394,6 +2408,19 @@ func (c *cli) Run(args []string) int {
 													if version >= 21.0 {
 														u.Path = path.Join(getAPIBasePath(), "server", "config", "blocknewusers")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", blocknewusersenabled: blockNewUsersEnabled})
+														if exitStatus != 0 {
+															exitStatus = 10001
+														}
+													} else {
+														exitStatus = 3
+													}
+												}
+
+												if results[12] != "" {
+													// for Claris FileMaker Server 21.1.1 or later
+													if version >= 21.1 {
+														u.Path = path.Join(getAPIBasePath(), "fmclients", "httpstunneling")
+														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enablehttpprotocolnetwork: enableHttpProtocolNetwork})
 														if exitStatus != 0 {
 															exitStatus = 10001
 														}
@@ -2750,6 +2777,7 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	syncPersistCache := ""
 	databaseServerAutoRestart := ""
 	blockNewUsersEnabled := ""
+	enableHttpProtocolNetwork := ""
 	onlyOpenLastOpenedDatabases := ""
 
 	for i := 0; i < len(str); i++ {
@@ -2842,6 +2870,14 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 			} else {
 				blockNewUsersEnabled = "false"
 			}
+		} else if regexp.MustCompile(`enablehttpprotocolnetwork=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "enablehttpprotocolnetwork=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "enablehttpprotocolnetwork=true" || (regexp.MustCompile(`enablehttpprotocolnetwork=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "enablehttpprotocolnetwork=0" && str[i] != "enablehttpprotocolnetwork=+0" && str[i] != "enablehttpprotocolnetwork=-0") {
+				enableHttpProtocolNetwork = "true"
+			} else {
+				enableHttpProtocolNetwork = "false"
+			}
 		} else if regexp.MustCompile(`onlyopenlastopeneddatabases=(.*)`).Match([]byte(val)) {
 			if strings.ToLower(str[i]) == "onlyopenlastopeneddatabases=" {
 				exitStatus = 10001
@@ -2867,6 +2903,7 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	results = append(results, syncPersistCache)
 	results = append(results, databaseServerAutoRestart)
 	results = append(results, blockNewUsersEnabled)
+	results = append(results, enableHttpProtocolNetwork)
 	results = append(results, onlyOpenLastOpenedDatabases)
 
 	return results, exitStatus
@@ -4788,6 +4825,16 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 			}
 			d := blockNewUsersConfigInfo{
 				blocknewusersenabled,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/fmclients/httpstunneling") {
+			// for Claris FileMaker Server 21.1.1 or later
+			enablehttpprotocolnetwork := false
+			if p.enablehttpprotocolnetwork == "true" {
+				enablehttpprotocolnetwork = true
+			}
+			d := enableHttpProtocolNetworkConfigInfo{
+				enablehttpprotocolnetwork,
 			}
 			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.onlyopenlastopeneddatabases != "" {
