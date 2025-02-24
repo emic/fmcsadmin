@@ -2263,13 +2263,13 @@ func (c *cli) Run(args []string) int {
 														if version >= 21.1 {
 															printOptions = append(printOptions, "enablehttpprotocolnetwork")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "onlyopenlastopeneddatabases":
 														if version >= 21.1 {
 															printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													default:
 														exitStatus = 3
