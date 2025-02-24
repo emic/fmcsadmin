@@ -1204,7 +1204,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 19.3 || strings.HasPrefix(versionString, "19.3.1") {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1216,7 +1216,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 19.5 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1228,7 +1228,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 20.1 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1240,7 +1240,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 21.0 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}

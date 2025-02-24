@@ -9,6 +9,7 @@ Version: 2.3.0-dev (in development)
 - Update "SET SERVERPREFS" command to open only the databases that were opened when the database server was last shut down. (Usage: "fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=true")
 - Update "GET SERVERPREFS" command to get the https tunneling setting for FileMaker Pro and FileMaker Go. (Usage: "fmcsadmin get serverprefs EnableHttpProtocolNetwork")
 - Update "SET SERVERPREFS" command to enable or disable the https tunneling for FileMaker Pro and FileMaker Go. (Usage: "fmcsadmin set serverprefs EnableHttpProtocolNetwork=true")
+- Change the error message displayed when executing "get serverprefs" command with invalid arguments on older versions of FileMaker Server.
 - Built with Go 1.23.
 - [INFO] Drop support for Claris FileMaker Server 19.6.
 - [INFO] Drop support for macOS Monterey 12.
