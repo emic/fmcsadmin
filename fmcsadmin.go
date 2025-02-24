@@ -1252,7 +1252,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 21.1 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
