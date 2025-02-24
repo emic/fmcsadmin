@@ -2227,37 +2227,37 @@ func (c *cli) Run(args []string) int {
 														if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 															printOptions = append(printOptions, "authenticatedstream")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "parallelbackupenabled":
 														if version >= 19.5 {
 															printOptions = append(printOptions, "parallelbackupenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "persistcacheenabled":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "persistcacheenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "syncpersistcache":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "syncpersistcache")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "databaseserverautorestart":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "databaseserverautorestart")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "blocknewusersenabled":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "blocknewusersenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "enablehttpprotocolnetwork":
 														if version >= 21.1 {
