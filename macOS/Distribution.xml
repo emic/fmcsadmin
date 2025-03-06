@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-    <title>fmcsadmin 2.2.0</title>
+    <title>fmcsadmin 2.3.0</title>
     <welcome file="welcome.txt" />
     <license file="LICENSE.txt" />
     <pkg-ref id="jp.co.emic.fmcsadmin"/>
@@ -14,5 +14,5 @@
     <choice id="jp.co.emic.fmcsadmin" visible="false">
         <pkg-ref id="jp.co.emic.fmcsadmin"/>
     </choice>
-    <pkg-ref id="jp.co.emic.fmcsadmin" version="2.2.0" onConclusion="none">fmcsadmin.pkg</pkg-ref>
+    <pkg-ref id="jp.co.emic.fmcsadmin" version="2.3.0" onConclusion="none">fmcsadmin.pkg</pkg-ref>
 </installer-gui-script>

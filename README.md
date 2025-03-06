@@ -29,13 +29,14 @@ Features
 - FileMaker Admin API PKI Authentication
 - View and change the settings for the persistent cache (for FileMaker Server 2024)
 - View and change the setting for blocking new users (for FileMaker Server 2024)
+- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1))
+- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1))
 
 Supported Servers
 -----
 Please see details: https://support.claris.com/s/article/Claris-support-policy?language=en_US
 - Claris FileMaker Server 2024 (until June 2026)
 - Claris FileMaker Server 2023 (until Apr 2025)
-- Claris FileMaker Server 19.6 (until Dec 2024)
 
 Usage
 -----
@@ -65,8 +66,8 @@ Noteworthy Options
 System Requirements
 -----
 - Linux version   : Ubuntu 20.04 LTS, Ubuntu 22.04 LTS or Ubuntu 22.04 LTS for ARM
-- macOS version   : macOS Monterey 12, macOS Ventura 13 or macOS Sonoma 14
-- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2 or Windows 11
+- macOS version   : macOS Ventura 13, macOS Sonoma 14 or macOS Sequoia 15
+- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2, Windows 11 Version 22H2 or later
 
 Download
 -----

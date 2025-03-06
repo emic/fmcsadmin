@@ -1,6 +1,21 @@
 fmcsadmin
-(c) 2017-2024 Emic Corporation <https://www.emic.co.jp/>
+(c) 2017-2025 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
+
+Version: 2.3.0
+Date: March 6, 2025
+- Add support for Claris FileMaker Server 2024 (21.1).
+- Add support for macOS Sequoia 15.
+- Update "GET SERVERPREFS" command to view the "Only open last opened databases" setting. (Usage: "fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases")
+- Update "SET SERVERPREFS" command to open only the databases that were opened when the database server was last shut down. (Usage: "fmcsadmin set serverprefs OnlyOpenLastOpenedDatabases=true")
+- Update "GET SERVERPREFS" command to get the https tunneling setting for FileMaker Pro and FileMaker Go. (Usage: "fmcsadmin get serverprefs EnableHttpProtocolNetwork")
+- Update "SET SERVERPREFS" command to enable or disable the https tunneling for FileMaker Pro and FileMaker Go. (Usage: "fmcsadmin set serverprefs EnableHttpProtocolNetwork=true")
+- Change the error message displayed when executing "get serverprefs" command with invalid arguments on older versions of FileMaker Server.
+- Change the error message displayed when executing "set serverprefs" command with invalid arguments on older versions of FileMaker Server.
+- Built with Go 1.23.
+- [INFO] Drop support for Claris FileMaker Server 19.6.
+- [INFO] Drop support for macOS Monterey 12.
+- [INFO] Drop support for Windows 11 Version 21H2.
 
 Version: 2.2.0
 Date: August 28, 2024

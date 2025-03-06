@@ -1,6 +1,6 @@
 /*
 fmcsadmin
-Copyright 2017-2024 Emic Corporation, https://www.emic.co.jp/
+Copyright 2017-2025 Emic Corporation, https://www.emic.co.jp/
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,6 +79,14 @@ type generalConfigInfo struct {
 	MaxPSOS           int `json:"maxPSOS"`
 }
 
+type general211ConfigInfo struct {
+	CacheSize                   int  `json:"cacheSize"`
+	MaxFiles                    int  `json:"maxFiles"`
+	MaxProConnections           int  `json:"maxProConnections"`
+	MaxPSOS                     int  `json:"maxPSOS"`
+	OnlyOpenLastOpenedDatabases bool `json:"onlyOpenLastOpenedDatabases"`
+}
+
 type securityConfigInfo struct {
 	RequireSecureDB bool `json:"requireSecureDB"`
 }
@@ -99,6 +107,10 @@ type persistentCacheConfigInfo struct {
 
 type blockNewUsersConfigInfo struct {
 	BlockNewUsersEnabled bool `json:"blockNewUsers"`
+}
+
+type enableHttpProtocolNetworkConfigInfo struct {
+	EnableHttpProtocolNetwork bool `json:"enableHTTPSTunneling"`
 }
 
 type phpConfigInfo struct {
@@ -150,38 +162,40 @@ type importingCertificateInfo struct {
 }
 
 type params struct {
-	command                   string
-	key                       string
-	messageText               string
-	force                     bool
-	retry                     int
-	status                    string
-	enabled                   string
-	cachesize                 int
-	maxfiles                  int
-	maxproconnections         int
-	maxpsos                   int
-	startuprestorationenabled bool
-	startuprestorationbuiltin bool
-	requiresecuredb           string
-	authenticatedstream       int
-	parallelbackupenabled     string
-	persistcacheenabled       string
-	syncpersistcache          string
-	databaseserverautorestart string
-	blocknewusersenabled      string
-	characterencoding         string
-	errormessagelanguage      string
-	dataprevalidation         bool
-	usefilemakerphp           bool
-	saveKey                   bool
-	subject                   string
-	password                  string
-	certificate               string
-	privateKey                string
-	intermediateCertificates  string
-	printRefreshToken         bool
-	identityFile              string
+	command                     string
+	key                         string
+	messageText                 string
+	force                       bool
+	retry                       int
+	status                      string
+	enabled                     string
+	cachesize                   int
+	maxfiles                    int
+	maxproconnections           int
+	maxpsos                     int
+	startuprestorationenabled   bool
+	startuprestorationbuiltin   bool
+	requiresecuredb             string
+	authenticatedstream         int
+	parallelbackupenabled       string
+	persistcacheenabled         string
+	syncpersistcache            string
+	databaseserverautorestart   string
+	blocknewusersenabled        string
+	enablehttpprotocolnetwork   string
+	onlyopenlastopeneddatabases string
+	characterencoding           string
+	errormessagelanguage        string
+	dataprevalidation           bool
+	usefilemakerphp             bool
+	saveKey                     bool
+	subject                     string
+	password                    string
+	certificate                 string
+	privateKey                  string
+	intermediateCertificates    string
+	printRefreshToken           bool
+	identityFile                string
 }
 
 type commandOptions struct {
@@ -1076,6 +1090,8 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "enablehttpprotocolnetwork":
+								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
 								}
@@ -1130,6 +1146,10 @@ func (c *cli) Run(args []string) int {
 											printOptions = append(printOptions, "databaseserverautorestart")
 										case "blocknewusersenabled":
 											printOptions = append(printOptions, "blocknewusersenabled")
+										case "enablehttpprotocolnetwork":
+											printOptions = append(printOptions, "enablehttpprotocolnetwork")
+										case "onlyopenlastopeneddatabases":
+											printOptions = append(printOptions, "onlyopenlastopeneddatabases")
 										default:
 											exitStatus = 10001
 										}
@@ -1158,6 +1178,10 @@ func (c *cli) Run(args []string) int {
 										printOptions = append(printOptions, "databaseserverautorestart")
 										printOptions = append(printOptions, "blocknewusersenabled")
 									}
+									if !usingCloud && version >= 21.1 {
+										printOptions = append(printOptions, "enablehttpprotocolnetwork")
+										printOptions = append(printOptions, "onlyopenlastopeneddatabases")
+									}
 								}
 
 								if version >= 19.2 && startupRestoration {
@@ -1180,7 +1204,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 19.3 || strings.HasPrefix(versionString, "19.3.1") {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1192,7 +1216,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 19.5 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1204,7 +1228,7 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 20.1 {
-												exitStatus = 3
+												exitStatus = 10001
 											}
 										}
 									}
@@ -1216,7 +1240,19 @@ func (c *cli) Run(args []string) int {
 										} else {
 											// for Claris FileMaker Server
 											if version < 21.0 {
-												exitStatus = 3
+												exitStatus = 10001
+											}
+										}
+									}
+
+									if option == "enablehttpprotocolnetwork" || option == "onlyopenlastopeneddatabases" {
+										if usingCloud {
+											// for Claris FileMaker Cloud
+											exitStatus = 3
+										} else {
+											// for Claris FileMaker Server
+											if version < 21.1 {
+												exitStatus = 10001
 											}
 										}
 									}
@@ -2008,6 +2044,8 @@ func (c *cli) Run(args []string) int {
 								case "authenticatedstream", "parallelbackupenabled":
 								case "persistcacheenabled", "syncpersistcache", "databaseserverautorestart":
 								case "blocknewusersenabled":
+								case "enablehttpprotocolnetwork":
+								case "onlyopenlastopeneddatabases":
 								default:
 									exitStatus = 10001
 								}
@@ -2101,8 +2139,10 @@ func (c *cli) Run(args []string) int {
 									syncPersistCache := results[9]
 									databaseServerAutoRestart := results[10]
 									blockNewUsersEnabled := results[11]
+									enableHttpProtocolNetwork := results[12]
+									onlyOpenLastOpenedDatabases := results[13]
 
-									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" {
+									if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || startupRestorationEnabled != "" || secureFilesOnlyFlag != "" || results[6] != "" || parallelBackupEnabled != "" || persistCacheEnabled != "" || syncPersistCache != "" || databaseServerAutoRestart != "" || blockNewUsersEnabled != "" || enableHttpProtocolNetwork != "" || onlyOpenLastOpenedDatabases != "" {
 										if results[0] == "" {
 											cacheSize = settings[0]
 										} else {
@@ -2187,37 +2227,49 @@ func (c *cli) Run(args []string) int {
 														if version >= 19.3 && !strings.HasPrefix(versionString, "19.3.1") {
 															printOptions = append(printOptions, "authenticatedstream")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "parallelbackupenabled":
 														if version >= 19.5 {
 															printOptions = append(printOptions, "parallelbackupenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "persistcacheenabled":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "persistcacheenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "syncpersistcache":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "syncpersistcache")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "databaseserverautorestart":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "databaseserverautorestart")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
 														}
 													case "blocknewusersenabled":
 														if version >= 21.0 {
 															printOptions = append(printOptions, "blocknewusersenabled")
 														} else {
-															exitStatus = 3
+															exitStatus = 10001
+														}
+													case "enablehttpprotocolnetwork":
+														if version >= 21.1 {
+															printOptions = append(printOptions, "enablehttpprotocolnetwork")
+														} else {
+															exitStatus = 10001
+														}
+													case "onlyopenlastopeneddatabases":
+														if version >= 21.1 {
+															printOptions = append(printOptions, "onlyopenlastopeneddatabases")
+														} else {
+															exitStatus = 10001
 														}
 													default:
 														exitStatus = 3
@@ -2248,18 +2300,23 @@ func (c *cli) Run(args []string) int {
 												printOptions = append(printOptions, "databaseserverautorestart")
 												printOptions = append(printOptions, "blocknewusersenabled")
 											}
+											if version >= 21.1 {
+												printOptions = append(printOptions, "enablehttpprotocolnetwork")
+												printOptions = append(printOptions, "onlyopenlastopeneddatabases")
+											}
 										}
 										if exitStatus == 0 {
-											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" {
+											if results[0] != "" || results[1] != "" || results[2] != "" || results[3] != "" || results[4] != "" || results[13] != "" {
 												u.Path = path.Join(getAPIBasePath(), "server", "config", "general")
 												exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{
-													command:                   "set",
-													cachesize:                 cacheSize,
-													maxfiles:                  maxFiles,
-													maxproconnections:         maxProConnections,
-													maxpsos:                   maxPSOS,
-													startuprestorationenabled: startupRestoration,
-													startuprestorationbuiltin: startupRestorationBuiltin,
+													command:                     "set",
+													cachesize:                   cacheSize,
+													maxfiles:                    maxFiles,
+													maxproconnections:           maxProConnections,
+													maxpsos:                     maxPSOS,
+													startuprestorationenabled:   startupRestoration,
+													startuprestorationbuiltin:   startupRestorationBuiltin,
+													onlyopenlastopeneddatabases: onlyOpenLastOpenedDatabases,
 												})
 											}
 
@@ -2351,6 +2408,19 @@ func (c *cli) Run(args []string) int {
 													if version >= 21.0 {
 														u.Path = path.Join(getAPIBasePath(), "server", "config", "blocknewusers")
 														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", blocknewusersenabled: blockNewUsersEnabled})
+														if exitStatus != 0 {
+															exitStatus = 10001
+														}
+													} else {
+														exitStatus = 3
+													}
+												}
+
+												if results[12] != "" {
+													// for Claris FileMaker Server 21.1.1 or later
+													if version >= 21.1 {
+														u.Path = path.Join(getAPIBasePath(), "fmclients", "httpstunneling")
+														exitStatus, _, _ = sendRequest("PATCH", u.String(), token, params{command: "set", enablehttpprotocolnetwork: enableHttpProtocolNetwork})
 														if exitStatus != 0 {
 															exitStatus = 10001
 														}
@@ -2707,6 +2777,8 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	syncPersistCache := ""
 	databaseServerAutoRestart := ""
 	blockNewUsersEnabled := ""
+	enableHttpProtocolNetwork := ""
+	onlyOpenLastOpenedDatabases := ""
 
 	for i := 0; i < len(str); i++ {
 		val := strings.ToLower(str[i])
@@ -2798,6 +2870,22 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 			} else {
 				blockNewUsersEnabled = "false"
 			}
+		} else if regexp.MustCompile(`enablehttpprotocolnetwork=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "enablehttpprotocolnetwork=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "enablehttpprotocolnetwork=true" || (regexp.MustCompile(`enablehttpprotocolnetwork=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "enablehttpprotocolnetwork=0" && str[i] != "enablehttpprotocolnetwork=+0" && str[i] != "enablehttpprotocolnetwork=-0") {
+				enableHttpProtocolNetwork = "true"
+			} else {
+				enableHttpProtocolNetwork = "false"
+			}
+		} else if regexp.MustCompile(`onlyopenlastopeneddatabases=(.*)`).Match([]byte(val)) {
+			if strings.ToLower(str[i]) == "onlyopenlastopeneddatabases=" {
+				exitStatus = 10001
+			} else if strings.ToLower(str[i]) == "onlyopenlastopeneddatabases=true" || (regexp.MustCompile(`onlyopenlastopeneddatabases=([+|-])?(\d)+`).Match([]byte(str[i])) && str[i] != "onlyopenlastopeneddatabases=0" && str[i] != "onlyopenlastopeneddatabases=+0" && str[i] != "onlyopenlastopeneddatabases=-0") {
+				onlyOpenLastOpenedDatabases = "true"
+			} else {
+				onlyOpenLastOpenedDatabases = "false"
+			}
 		} else {
 			exitStatus = 10001
 		}
@@ -2815,6 +2903,8 @@ func parseServerConfigurationSettings(str []string) ([]string, int) {
 	results = append(results, syncPersistCache)
 	results = append(results, databaseServerAutoRestart)
 	results = append(results, blockNewUsersEnabled)
+	results = append(results, enableHttpProtocolNetwork)
+	results = append(results, onlyOpenLastOpenedDatabases)
 
 	return results, exitStatus
 }
@@ -3927,6 +4017,10 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 	var maxProConnections int
 	var maxPSOS int
 	var startupRestorationEnabled bool
+	var onlyOpenLastOpenedDatabases bool
+
+	versionString, _ := getServerVersionString(strings.Replace(urlString, "/config/general", "/metadata", 1), token)
+	version, _ := getServerVersionAsFloat(versionString)
 
 	body, _, err := callURL("GET", urlString, token, nil)
 	if err != nil {
@@ -3974,8 +4068,15 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 		settings = append(settings, -1)
 	}
 
-	versionString, _ := getServerVersionString(strings.Replace(urlString, "/config/general", "/metadata", 1), token)
-	version, _ := getServerVersionAsFloat(versionString)
+	if version >= 21.1 {
+		// for Claris FileMaker Server 21.1.1 or later
+		_ = scan.ScanTree(v, "/response/onlyOpenLastOpenedDatabases", &onlyOpenLastOpenedDatabases)
+		if onlyOpenLastOpenedDatabases {
+			settings = append(settings, 1)
+		} else {
+			settings = append(settings, 0)
+		}
+	}
 
 	// output
 	if result == 0 {
@@ -4048,6 +4149,22 @@ func getServerGeneralConfigurations(urlString string, token string, printOptions
 			if option == "blocknewusersenabled" {
 				if version >= 21.0 {
 					getServerSettingAsBool(strings.Replace(urlString, "/general", "/blocknewusers", 1), token, []string{option})
+				}
+			}
+
+			if option == "enablehttpprotocolnetwork" {
+				if version >= 21.1 {
+					getServerSettingAsBool(strings.Replace(urlString, "/server/config/general", "/fmclients/httpstunneling", 1), token, []string{option})
+				}
+			}
+
+			if option == "onlyopenlastopeneddatabases" {
+				if version >= 21.1 {
+					if onlyOpenLastOpenedDatabases {
+						fmt.Println("OnlyOpenLastOpenedDatabases = true [default: false] ")
+					} else {
+						fmt.Println("OnlyOpenLastOpenedDatabases = false [default: false] ")
+					}
 				}
 			}
 		}
@@ -4125,6 +4242,8 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 		err = scan.ScanTree(v, "/response/parallelBackupEnabled", &enabled)
 	} else if u.Path == path.Join(getAPIBasePath(), "server", "config", "blocknewusers") {
 		err = scan.ScanTree(v, "/response/blockNewUsers", &enabled)
+	} else if u.Path == path.Join(getAPIBasePath(), "fmclients", "httpstunneling") {
+		err = scan.ScanTree(v, "/response/enableHTTPSTunneling", &enabled)
 	}
 
 	enabledStr = "false"
@@ -4144,6 +4263,10 @@ func getServerSettingAsBool(urlString string, token string, printOptions []strin
 				fmt.Println("ParallelBackupEnabled = " + enabledStr + " [default: false] ")
 			case "blocknewusersenabled":
 				fmt.Println("BlockNewUsersEnabled = " + enabledStr + " [default: false] ")
+			case "enablehttpprotocolnetwork":
+				fmt.Println("EnableHttpProtocolNetwork = " + enabledStr + " [default: false] ")
+			case "onlyopenlastopeneddatabases":
+				fmt.Println("OnlyOpenLastOpenedDatabases = " + enabledStr + " [default: false] ")
 			default:
 			}
 		}
@@ -4704,7 +4827,32 @@ func sendRequest(method string, urlString string, token string, p params) (int, 
 				blocknewusersenabled,
 			}
 			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/fmclients/httpstunneling") {
+			// for Claris FileMaker Server 21.1.1 or later
+			enablehttpprotocolnetwork := false
+			if p.enablehttpprotocolnetwork == "true" {
+				enablehttpprotocolnetwork = true
+			}
+			d := enableHttpProtocolNetworkConfigInfo{
+				enablehttpprotocolnetwork,
+			}
+			jsonStr, _ = json.Marshal(d)
+		} else if strings.HasSuffix(urlString, "/server/config/general") && p.onlyopenlastopeneddatabases != "" {
+			// for Claris FileMaker Server 21.1.1 or later
+			onlyopenlastopeneddatabases := false
+			if p.onlyopenlastopeneddatabases == "true" {
+				onlyopenlastopeneddatabases = true
+			}
+			d := general211ConfigInfo{
+				p.cachesize,
+				p.maxfiles,
+				p.maxproconnections,
+				p.maxpsos,
+				onlyopenlastopeneddatabases,
+			}
+			jsonStr, _ = json.Marshal(d)
 		} else if strings.HasSuffix(urlString, "/server/config/general") && p.startuprestorationbuiltin {
+			// for Claris FileMaker Server 19.1.1 or previous
 			d := generalOldConfigInfo{
 				p.cachesize,
 				p.maxfiles,
