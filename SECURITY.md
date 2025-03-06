@@ -6,8 +6,8 @@ The latest minor version of fmcsadmin 2 is supported.
 
 | Version | Supported |
 | ------- | - |
-| 2.2.x   | ✅ |
-| < 2.2   | ❌ |
+| 2.3.x   | ✅ |
+| < 2.3   | ❌ |
 
 ## Reporting a Vulnerability
 

@@ -2,7 +2,8 @@ fmcsadmin
 (c) 2017-2025 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
-Version: 2.3.0-dev (in development)
+Version: 2.3.0
+Date: March 6, 2025
 - Add support for Claris FileMaker Server 2024 (21.1).
 - Add support for macOS Sequoia 15.
 - Update "GET SERVERPREFS" command to view the "Only open last opened databases" setting. (Usage: "fmcsadmin get serverprefs OnlyOpenLastOpenedDatabases")
