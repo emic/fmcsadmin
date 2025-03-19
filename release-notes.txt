@@ -2,6 +2,9 @@ fmcsadmin
 (c) 2017-2025 Emic Corporation <https://www.emic.co.jp/>
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
+Version: 2.3.1-dev (in development)
+- 
+
 Version: 2.3.0
 Date: March 6, 2025
 - Add support for Claris FileMaker Server 2024 (21.1).
