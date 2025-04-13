@@ -26,7 +26,7 @@ jobs:
     - run: go test
 
     - shell: bash
-      run: cat Makefile | grep "^VERSION=" | sed -e "s/VERSION/fmcsadmin_version/g" >> "$GITHUB_ENV"
+      run: grep "^VERSION=" < Makefile | sed -e "s/VERSION/fmcsadmin_version/g" >> "$GITHUB_ENV"
 
     - run: go build -ldflags "-X main.version=${{ env.fmcsadmin_version }}" fmcsadmin.go
 
@@ -52,7 +52,7 @@ jobs:
       name: Pull from GitHub Container Registry
       run: |
            docker pull ghcr.io/matsuo/goss:latest
-           docker run --rm -i -v /$(pwd):/tmp ghcr.io/matsuo/goss:latest bash <<'EOF'
+           docker run --rm -i -v "/$(pwd):/tmp" ghcr.io/matsuo/goss:latest bash <<'EOF'
            cd /root/go/src/github.com/goss-org/goss
            cp ./release/goss-darwin-amd64 /tmp/goss-darwin-amd64
            cp ./release/goss-darwin-arm64 /tmp/goss-darwin-arm64
