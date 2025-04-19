@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-        os: [ 'ubuntu-20.04', 'ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-24.04', 'ubuntu-24.04-arm', 'ubuntu-latest', 'macos-13', 'macos-14', 'macos-15', 'macos-latest', 'windows-2019', 'windows-2022', 'windows-2025', 'windows-latest', 'windows-11-arm' ]
+        os: [ 'ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-24.04', 'ubuntu-24.04-arm', 'ubuntu-latest', 'macos-13', 'macos-14', 'macos-15', 'macos-latest', 'windows-2019', 'windows-2022', 'windows-2025', 'windows-latest', 'windows-11-arm' ]
     steps:
 
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
