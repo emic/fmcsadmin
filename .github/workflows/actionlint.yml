@@ -22,5 +22,5 @@ jobs:
         shell: bash
 
       - name: Check workflow files
-        run: actionlint -color
+        run: actionlint -color -ignore 'label "windows-11-arm" is unknown. .+'
         shell: bash
