@@ -46,7 +46,7 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GHCR_TOKEN_202507 }}
+        password: ${{ secrets.GHCR_TOKEN_202605 }}
 
     - if: (matrix.os == 'ubuntu-22.04' || matrix.os == 'ubuntu-24.04' || matrix.os == 'ubuntu-latest') && (github.repository_owner == 'emic' || github.repository_owner == 'matsuo')
       name: Pull from GitHub Container Registry
