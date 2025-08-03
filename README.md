@@ -34,6 +34,7 @@ Features
 
 Supported Servers
 -----
+- Claris FileMaker Server 2025
 - Claris FileMaker Server 2024
 - Claris FileMaker Server 2023
 
