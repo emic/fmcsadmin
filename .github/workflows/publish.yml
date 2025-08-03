@@ -5,6 +5,10 @@ on:
     paths:
       - 'Dockerfile'
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   publish:
     name: Publish Image

@@ -2,7 +2,8 @@ name: actionlint
 on:
   push:
   pull_request:
-
+permissions:
+  contents: read
 jobs:
   actionlint:
     runs-on: ubuntu-latest
