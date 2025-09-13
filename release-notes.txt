@@ -6,6 +6,7 @@ Version: 2.4.0-dev (in development)
 - Add support for Claris FileMaker Server 2025 (22.0).
 - Add support for Ubuntu 24.04 LTS (on amd64 architecture).
 - Add support for Ubuntu 24.04 LTS on arm64 architecture.
+- Add support for macOS Tahoe 26.
 - Built with Go 1.24.
 - [INFO] Drop support for Ubuntu 20.04 LTS.
 - [INFO] Drop support for Windows Server 2019.
