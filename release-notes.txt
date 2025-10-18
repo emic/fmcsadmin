@@ -9,6 +9,7 @@ Version: 2.4.0-dev (in development)
 - Add support for macOS Tahoe 26.
 - Built with Go 1.24.
 - [INFO] Drop support for Ubuntu 20.04 LTS.
+- [INFO] Drop support for macOS Ventura 13.
 - [INFO] Drop support for Windows Server 2019.
 - [INFO] Drop support for Windows 10.
 - [INFO] Drop support for Windows 11 Version 22H2.
