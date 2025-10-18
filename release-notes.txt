@@ -10,6 +10,7 @@ Version: 2.4.0-dev (in development)
 - Built with Go 1.24.
 - [INFO] Drop support for Ubuntu 20.04 LTS.
 - [INFO] Drop support for Windows Server 2019.
+- [INFO] Drop support for Windows 10.
 
 Version: 2.3.0
 Date: March 6, 2025
