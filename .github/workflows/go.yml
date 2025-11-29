@@ -17,7 +17,7 @@ jobs:
         os: [ 'ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-24.04', 'ubuntu-24.04-arm', 'ubuntu-latest', 'macos-14', 'macos-15', 'macos-26', 'macos-latest', 'windows-2022', 'windows-2025', 'windows-latest', 'windows-11-arm' ]
     steps:
 
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
     - name: Setup Go
       uses: ./.github/actions/setup-go
