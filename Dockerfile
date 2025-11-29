@@ -5,11 +5,11 @@ RUN apt update && apt install -y curl tar make bash git build-essential
 # Install Go
 WORKDIR /root
 
-RUN curl -LO https://go.dev/dl/go1.23.10.linux-amd64.tar.gz && tar -C /tmp -xzf go1.23.10.linux-amd64.tar.gz && rm -f /root/go1.23.10.linux-amd64.tar.gz && mv /tmp/go go1.23
+RUN curl -LO https://go.dev/dl/go1.24.10.linux-amd64.tar.gz && tar -C /tmp -xzf go1.24.10.linux-amd64.tar.gz && rm -f /root/go1.24.10.linux-amd64.tar.gz && mv /tmp/go go1.24
 
 WORKDIR /root/go/src/go.googlesource.com/go
 
-RUN git clone https://go.googlesource.com/go goroot && cd goroot && git checkout release-branch.go1.24 && cd src && export GOROOT_BOOTSTRAP=/root/go1.23 && ./all.bash
+RUN git clone https://go.googlesource.com/go goroot && cd goroot && git checkout release-branch.go1.25 && cd src && export GOROOT_BOOTSTRAP=/root/go1.24 && ./all.bash
 
 RUN cp -pr /root/go/src/go.googlesource.com/go/goroot /usr/local/go
 
