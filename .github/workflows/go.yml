@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#standard-github-hosted-runners-for-public-repositories
-        os: [ 'ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-24.04', 'ubuntu-24.04-arm', 'ubuntu-latest', 'macos-14', 'macos-15', 'macos-26', 'macos-latest', 'windows-2022', 'windows-2025', 'windows-latest', 'windows-11-arm' ]
+        os: [ 'ubuntu-22.04', 'ubuntu-22.04-arm', 'ubuntu-24.04', 'ubuntu-24.04-arm', 'ubuntu-latest', 'macos-14', 'macos-15-intel', 'macos-15', 'macos-26', 'macos-latest', 'windows-2022', 'windows-2025', 'windows-latest', 'windows-11-arm' ]
     steps:
 
     - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
