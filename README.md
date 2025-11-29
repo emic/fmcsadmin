@@ -36,7 +36,6 @@ Supported Servers
 -----
 - Claris FileMaker Server 2025
 - Claris FileMaker Server 2024
-- Claris FileMaker Server 2023
 
 The end of support date for this software is the same as the EOL date of FileMaker Server. See the following page for information about the EOL date of FileMaker Server: https://support.claris.com/s/article/Claris-support-policy?language=en_US
 
