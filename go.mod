@@ -2,7 +2,7 @@ module github.com/emic/fmcsadmin
 
 go 1.25.0
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
