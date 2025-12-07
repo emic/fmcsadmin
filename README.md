@@ -27,10 +27,10 @@ Features
 - Cancel the currently running backup
 - View and change the setting for parallel backup
 - FileMaker Admin API PKI Authentication
-- View and change the settings for the persistent cache (for FileMaker Server 2024)
-- View and change the setting for blocking new users (for FileMaker Server 2024)
-- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1))
-- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1))
+- View and change the settings for the persistent cache
+- View and change the setting for blocking new users
+- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1) or later)
+- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1) or later)
 
 Supported Servers
 -----
