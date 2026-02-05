@@ -1,0 +1,23 @@
+name: actionlint
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install actionlint
+        id: install_actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@a443f344ff32813837fa49f7aa6cbc478d770e62 # v1.7.9
+        shell: bash
+
+      - name: Check workflow files
+        run: actionlint -color
+        shell: bash

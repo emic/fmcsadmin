@@ -27,16 +27,17 @@ Features
 - Cancel the currently running backup
 - View and change the setting for parallel backup
 - FileMaker Admin API PKI Authentication
-- View and change the settings for the persistent cache (for FileMaker Server 2024)
-- View and change the setting for blocking new users (for FileMaker Server 2024)
-- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1))
-- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1))
+- View and change the settings for the persistent cache
+- View and change the setting for blocking new users
+- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1) or later)
+- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1) or later)
 
 Supported Servers
 -----
-Please see details: https://support.claris.com/s/article/Claris-support-policy?language=en_US
-- Claris FileMaker Server 2024 (until June 2026)
-- Claris FileMaker Server 2023 (until Apr 2025)
+- Claris FileMaker Server 2025
+- Claris FileMaker Server 2024
+
+The end of support date for this software is the same as the EOL date of FileMaker Server. See the following page for information about the EOL date of FileMaker Server: https://support.claris.com/s/article/Claris-support-policy?language=en_US
 
 Usage
 -----
@@ -65,9 +66,9 @@ Noteworthy Options
 
 System Requirements
 -----
-- Linux version   : Ubuntu 20.04 LTS, Ubuntu 22.04 LTS or Ubuntu 22.04 LTS for ARM
-- macOS version   : macOS Ventura 13, macOS Sonoma 14 or macOS Sequoia 15
-- Windows version : Windows Server 2019, Windows Server 2022, Windows 10 Version 22H2, Windows 11 Version 22H2 or later
+- Linux version   : Ubuntu 22.04 LTS, Ubuntu 22.04 LTS for ARM, Ubuntu 24.04 LTS or Ubuntu 24.04 LTS for ARM
+- macOS version   : macOS Sonoma 14, macOS Sequoia 15 or macOS Tahoe 26
+- Windows version : Windows Server 2022, Windows 11 Version 23H2 or later
 
 Download
 -----

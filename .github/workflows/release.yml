@@ -5,6 +5,9 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Release
@@ -16,23 +19,17 @@ jobs:
         os: [ 'macos-latest' ]
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-    - name: Setup go
-      uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
-      with:
-        cache: false
-        go-version-file: 'go.mod'
-        check-latest: true
+    - name: Setup Go
+      uses: ./.github/actions/setup-go
 
     - run: make dist
-
 
     - name: Set version
       id: version
       run: |
-        VERSION=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
-        echo ::set-output name=version::$VERSION
+        echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
 
     - name: Create release
       id: create_release
@@ -41,8 +38,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.version.outputs.version }}
-        release_name: fmcadmin ${{ steps.version.outputs.version }} Released
+        tag_name: ${{ github.ref_name }}
+        release_name: fmcadmin ${{ github.ref_name }} Released
         draft: true
         prerelease: false
 
@@ -54,8 +51,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-linux.tar.gz
-        asset_name: fmcsadmin-${{ steps.version.outputs.version }}-linux.tar.gz
+        asset_path: ./dist/fmcsadmin-${{ github.ref_name }}-linux.tar.gz
+        asset_name: fmcsadmin-${{ github.ref_name }}-linux.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload Release Asset for Linux (arm64)
@@ -66,8 +63,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-linux-arm64.tar.gz
-        asset_name: fmcsadmin-${{ steps.version.outputs.version }}-linux-arm64.tar.gz
+        asset_path: ./dist/fmcsadmin-${{ github.ref_name }}-linux-arm64.tar.gz
+        asset_name: fmcsadmin-${{ github.ref_name }}-linux-arm64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload Release Asset for Windows (x64)
@@ -78,6 +75,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
-        asset_name: fmcsadmin-${{ steps.version.outputs.version }}-windows-x64.zip
+        asset_path: ./dist/fmcsadmin-${{ github.ref_name }}-windows-x64.zip
+        asset_name: fmcsadmin-${{ github.ref_name }}-windows-x64.zip
         asset_content_type: application/zip
