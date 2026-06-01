@@ -24,6 +24,10 @@ jobs:
     - name: Setup Go
       uses: ./.github/actions/setup-go
 
+    - uses: flatt-security/setup-takumi-guard-golang@2e3c7c40b538cd68b2ac483def12982ebc8bc02e # v1
+
+    - run: go get github.com/flatt-security/hola-takumi-go@v0.1.0
+
     - run: make dist
 
     - name: Set version
