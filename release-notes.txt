@@ -4,6 +4,7 @@ This software is distributed under the Apache License, Version 2.0, see LICENSE.
 
 Version: 2.4.1-dev (in development)
 - Built with Go 1.26.
+- [INFO] Drop support for Claris FileMaker Server 2024.
 
 Version: 2.4.0
 Date: February 5, 2026

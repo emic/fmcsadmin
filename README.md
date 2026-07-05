@@ -29,13 +29,12 @@ Features
 - FileMaker Admin API PKI Authentication
 - View and change the settings for the persistent cache
 - View and change the setting for blocking new users
-- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go (for FileMaker Server 2024 (21.1) or later)
-- View and change the "Only open last opened databases" setting (for FileMaker Server 2024 (21.1) or later)
+- View and change the HTTPS tunneling setting for FileMaker Pro and FileMaker Go
+- View and change the "Only open last opened databases" setting
 
 Supported Servers
 -----
 - Claris FileMaker Server 2025
-- Claris FileMaker Server 2024
 
 The end of support date for this software is the same as the EOL date of FileMaker Server. See the following page for information about the EOL date of FileMaker Server: https://support.claris.com/s/article/Claris-support-policy?language=en_US
 
