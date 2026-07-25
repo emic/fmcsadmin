@@ -3,6 +3,7 @@ fmcsadmin
 This software is distributed under the Apache License, Version 2.0, see LICENSE.txt and NOTICE.txt for more information.
 
 Version: 2.4.1-dev (in development)
+- Add support for Windows Server 2025.
 - Built with Go 1.26.
 - [INFO] Drop support for Claris FileMaker Server 2024.
 - [INFO] Drop support for macOS Sonoma 14.
